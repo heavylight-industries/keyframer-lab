@@ -1,0 +1,1168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Keyframer Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap">
+<style>
+/* Layout: an instrument panel. Header, the splice lane over the whole sample, a zoomed view on the heads, then the
+   deck: three Rogan knobs in a V, and the panel with PLAY, the detector's three modes and THIN's crossfader.
+   One look on purpose, a hotel-lobby hi-fi after dark: a graphite body, rounded bevelled boxes, near-black
+   screens, white Rogan knobs. Three colours for the modes, VOL rose, GRID powder blue, RAND green; a mode's
+   slices alternate its colour and a small step from it (the hue turned a little, a touch deeper). Each hue is a
+   ramp the page fills at start (--<hue>-0 lightest .. 4 deepest). */
+:root {
+  color-scheme: dark;
+  --paper: #1b1a1e;       /* the page: graphite, a hint of plum */
+  --well: #242328;        /* the deck's panels */
+  --raised: #2e2c33;      /* boxes inside them */
+  --line: #3a3840;
+  --track: #48454e;
+  --text: #efe5d2;        /* cream */
+  --dim: #b3a596;
+  --faint: #7c7680;
+  --title: #e8a6b0;       /* the title: a light burgundy */
+  --burgundy: #8a2f40;    /* Stop */
+  --bg: #111013;          /* the screens: near-black */
+  --screen-line: #29272e;
+  --screen-ink: #eadfca;
+  --screen-dim: #8d8792;
+  /* the modes; the heads in the same three */
+  --rose: #e0959f;        /* VOL, the reference */
+  --powder: #93b8d6;      /* GRID, the play head */
+  --green: #9cc27f;       /* RAND, keyframes */
+  --rust: #d98245;        /* border splices, the leash past K */
+  --cream: #f3e9d3;       /* the incoming head */
+  --f-display: "Jost", "Futura", "Century Gothic", "Avenir Next", sans-serif;
+  --f-body: "Jost", "Futura", "Avenir Next", "Segoe UI", sans-serif;
+  --f-mono: "Courier Prime", "Courier New", ui-monospace, monospace;
+  --mode: var(--rose); --mode-0: #f0c3c9; --mode-3: #9a5a64; --mode-4: #6b3b43;
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -2px 0 rgba(0, 0, 0, 0.35), 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+html, body { background: var(--paper); color: var(--text); }
+[hidden] { display: none !important; }
+body { font: 400 15px/1.5 var(--f-body); }
+.app { max-width: 1320px; margin: 0 auto; padding-block: 18px 30px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 14px; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
+
+/* header */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-right: auto; min-width: 0; }
+.brand h1 { font: 700 30px/1 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; margin: 0; color: var(--title); }
+.brand span { font: 500 12px/1.2 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
+.btn { background: var(--raised); border: 1px solid var(--track); border-radius: 9px; padding: 8px 18px; cursor: pointer; box-shadow: var(--bevel);
+  font: 700 13px/1.2 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--text); }
+.btn:hover { background: #3a3840; }
+.btn.go { background: var(--green); border-color: var(--green-3, #56743f); color: #18200f; min-width: 100px; }
+.btn.go[aria-pressed="true"] { background: var(--burgundy); border-color: #5a1e29; color: var(--cream); }
+.file { font: 400 14px/1.3 var(--f-mono); color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 48ch; }
+.note { margin: 0; color: var(--dim); font-size: 15px; max-width: 98ch; }
+.note b { font-weight: 600; }
+.warn { margin: 0; color: var(--title); font-size: 14px; }
+
+/* the screens */
+.view { position: relative; background: var(--bg); border: 2px solid #0a080b; border-radius: 14px; overflow: hidden; touch-action: none;
+  box-shadow: inset 0 0 0 1px #2b2930, var(--bevel); }
+.view canvas { display: block; width: 100%; }
+.view .tag { position: absolute; left: 14px; top: 9px; font: 700 12px/1 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; color: #bbb5bf; pointer-events: none; }
+.view .read { position: absolute; right: 14px; top: 9px; font: 400 13px/1 var(--f-mono); color: #d6d0d8; pointer-events: none; }
+#wave { height: 300px; cursor: crosshair; }
+#zoom { height: 170px; }
+.zoomctl { position: absolute; right: 14px; bottom: 9px; display: flex; gap: 8px; align-items: center; font: 400 12px/1 var(--f-mono); color: var(--screen-dim); }
+.zoomctl button { background: transparent; border: 1px solid var(--screen-line); border-radius: 6px; padding: 3px 8px; cursor: pointer; font: 600 10px/1 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--screen-dim); }
+.zoomctl button[aria-pressed="true"] { color: var(--cream); border-color: var(--screen-dim); }
+.drop { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(17, 16, 19, 0.9); border: 2px dashed var(--green); border-radius: 12px;
+  font: 700 18px/1 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--green); }
+
+/* the deck */
+.stage { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.views { display: grid; gap: 14px; min-width: 0; }
+.lib { display: flex; flex-direction: column; gap: 8px; padding: 14px 10px 12px; min-width: 0; contain: size; }   /* (the views' height; its list scrolls) */
+.libl { display: flex; flex-direction: column; gap: 1px; overflow-y: auto; min-height: 0; flex: 1; }
+.libl > * { flex: none; }   /* (each row its own height; the list scrolls) */
+.libl .grp { font: 700 10px/1 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--faint); margin: 10px 8px 4px; }
+.libl .grp:first-child { margin-top: 2px; }
+.libl button { text-align: left; background: transparent; border: 0; border-radius: 8px; padding: 6px 8px; cursor: pointer;
+  font: 400 14px/1.25 var(--f-body); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.libl button:hover { background: var(--raised); color: var(--text); }
+.libl button[aria-current="true"] { background: var(--raised); color: var(--text); box-shadow: inset 3px 0 0 var(--mode); }
+.libhint { margin: 0 8px; font-size: 12px; line-height: 1.4; color: var(--faint); }
+.sval { font: 700 14px/1 var(--f-mono); color: var(--text); min-width: 15ch; text-align: right; }
+.deck { display: grid; grid-template-columns: minmax(0, 470px) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.box { background: var(--well); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--bevel); }
+.knobs { display: grid; grid-template-columns: repeat(3, 1fr); align-content: start; gap: 6px; padding: 18px 10px 14px; }
+.knob { display: grid; justify-items: center; align-content: start; gap: 4px; user-select: none; touch-action: none; }
+.knob svg { width: 132px; max-width: 100%; aspect-ratio: 1; cursor: ns-resize; overflow: visible; }
+.knob:nth-child(2) { margin-top: 96px; }   /* TUNE a step lower: the three in a V */
+.knob .lbl { font: 700 23px/1 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; margin-top: 4px; color: #f6f3ee; }
+.knob .val { font: 700 16px/1.2 var(--f-mono); color: var(--text); white-space: nowrap; }
+.knob .sub { font: 500 11px/1.3 var(--f-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); text-align: center; }
+.lockrow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; margin-top: 14px; }
+.lock { background: var(--raised); border: 1px solid var(--track); border-radius: 999px; padding: 7px 16px; cursor: pointer; box-shadow: var(--bevel);
+  font: 700 12px/1.2 var(--f-display); letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); }
+.lock[aria-pressed="true"] { background: var(--cream); border-color: var(--cream); color: #1c1418; }
+.lockval { font: 400 13px/1.3 var(--f-mono); color: var(--dim); }
+.hint { grid-column: 1 / -1; margin: 12px 6px 0; font-size: 13px; line-height: 1.45; color: var(--faint); }
+.side { display: grid; gap: 14px; align-content: start; padding: 14px 16px 16px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.cap { font: 700 13px/1 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--text); }
+.seg { display: inline-flex; border: 1px solid var(--track); border-radius: 9px; overflow: hidden; background: var(--raised); box-shadow: var(--bevel); }
+.seg button { background: transparent; border: 0; border-right: 1px solid var(--track); padding: 7px 12px; cursor: pointer;
+  font: 600 12px/1.2 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--cream); color: #1c1418; }
+.switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: 600 12px/1 var(--f-display); letter-spacing: 0.18em; text-transform: uppercase; }
+.switch input { accent-color: var(--mode); width: 17px; height: 17px; }
+
+/* the detector's modes: three keys, each its own colour */
+.modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.mk { --h: var(--rose); --h0: var(--rose-0, #f0c3c9); --h3: var(--rose-3, #9a5a64);
+  display: grid; gap: 5px; justify-items: start; text-align: left; padding: 12px 14px 11px; cursor: pointer; border-radius: 12px;
+  background: var(--raised); border: 1px solid var(--line); border-top: 6px solid var(--h); color: var(--dim); box-shadow: var(--bevel); }
+.mk b { font: 700 24px/1 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--h0); }
+.mk span { font: 400 13px/1.3 var(--f-body); }
+.mk[data-v="2"] { --h: var(--powder); --h0: var(--powder-0, #c3dbee); --h3: var(--powder-3, #52738f); }
+.mk[data-v="3"] { --h: var(--green); --h0: var(--green-0, #cbe4b8); --h3: var(--green-3, #56743f); }
+.mk[aria-pressed="true"] { background: var(--h); border-color: var(--h3); border-top-color: var(--h3); color: #1c1418; }
+.mk[aria-pressed="true"] b { color: #1c1418; }
+.modes[data-off="1"] .mk { opacity: 0.5; }
+
+/* THIN: a crossfader across the panel */
+.fader { display: grid; gap: 6px; user-select: none; }
+.fhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.fhead .cap { font-size: 16px; }
+.fval { font: 700 18px/1 var(--f-mono); color: var(--mode-0); }
+.ftrack { position: relative; height: 72px; cursor: ew-resize; touch-action: none; border-radius: 12px; background: var(--raised); border: 1px solid var(--line); box-shadow: var(--bevel); }
+.ftrack:focus-visible { outline-offset: 3px; }
+.fsegs { position: absolute; left: 22px; right: 22px; top: 50%; height: 22px; margin-top: -11px; display: flex; gap: 3px; }
+.fsegs i { flex: 1; border-radius: 4px; background: #131215; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); }
+.fcap { position: absolute; top: 7px; bottom: 7px; width: 30px; margin-left: -15px; left: 22px; border-radius: 6px; pointer-events: none;
+  background: linear-gradient(180deg, #444, #1d1d1d 50%, #121212 51%, #2a2a2a); border: 1px solid #050505; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.55); }
+.fcap::before { content: ""; position: absolute; left: 50%; top: 5px; bottom: 5px; width: 3px; margin-left: -1.5px; border-radius: 1px; background: #f1ebdf; }
+.fends { display: flex; justify-content: space-between; font: 400 13px/1 var(--f-mono); color: var(--faint); padding: 0 16px; }
+
+.stats { display: grid; gap: 6px 12px; }
+.stat { display: grid; gap: 2px; }
+.stat b { font: 700 21px/1.1 var(--f-mono); color: var(--text); }
+.stat span { font: 500 10px/1.3 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
+.sboxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.sbox { display: grid; gap: 9px; align-content: start; padding: 12px 14px; background: var(--raised); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--bevel); }
+.sbox .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lvl { display: flex; align-items: center; gap: 14px; }
+.lvl input { accent-color: var(--cream); flex: 1; min-width: 0; }
+.foot { margin: 0; color: var(--faint); font-size: 13px; max-width: 104ch; }
+@media (max-width: 860px) {
+  .stage { grid-template-columns: 1fr; }
+  .lib { contain: none; max-height: 220px; }
+  .knob:nth-child(2) { margin-top: 36px; }
+  .deck { grid-template-columns: 1fr; }
+  #wave { height: 230px; }
+  #zoom { height: 140px; }
+  .view .tag { display: none; }
+  .view .read { left: 10px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .knob .lbl { font-size: 18px; }
+  .mk b { font-size: 18px; }
+  .mk span { display: none; }
+  .brand h1 { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app" id="app">
+  <header class="bar">
+    <div class="brand"><h1>Keyframer Lab</h1><span>Digitakt II ONESHOT+ engine, in your browser</span></div>
+    <span class="file" id="file">Demo loop (synthesized)</span>
+    <input type="file" id="pickdir" webkitdirectory multiple hidden>
+    <input type="file" id="pick" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.ogg" multiple hidden>
+    <button class="btn" id="loaddir" type="button">Open folder</button>
+    <button class="btn" id="load" type="button">Open files</button>
+    <button class="btn go" id="play" type="button" aria-pressed="false">Play</button>
+  </header>
+  <p class="note" id="note">The <b style="color: var(--rose-0, #f0c3c9)">reference</b> walks through the sample at STR's rate; the <b style="color: var(--powder-0, #c3dbee)">play head</b> reads it at TUNE's rate.
+    When the play head drifts more than K <b style="color: var(--green-0, #cbe4b8)">keyframes</b> (the sample's peaks and troughs) from the reference, it crossfades back to it: a splice, drawn as an arc above the sample.
+    <b>Transients</b> are borders: the play head waits before one until the reference crosses it, so every hit plays once. Click a slice to play it; drag the region's edges.</p>
+  <p class="warn" id="warn" hidden></p>
+
+  <div class="stage">
+  <aside class="box lib" aria-label="Samples"><span class="cap">Samples</span><div class="libl" id="libl"></div>
+    <p class="libhint">Open a folder or drop files; ↑ ↓ step through them.</p></aside>
+  <div class="views">
+  <div class="view" id="waveview">
+    <canvas id="wave"></canvas>
+    <span class="tag">Splices · sample</span><span class="read" id="waveread"></span>
+    <div class="drop" id="drop" hidden>Drop to load</div>
+  </div>
+  <div class="view" id="zoomview">
+    <canvas id="zoom"></canvas>
+    <span class="tag">Zoomed in</span><span class="read" id="zoomread"></span>
+    <div class="zoomctl"><span id="zoomms"></span><button type="button" id="zoomauto" aria-pressed="true">Auto zoom</button></div>
+  </div>
+  </div>
+  </div>
+
+  <section class="deck" aria-label="Controls">
+    <div class="box knobs" id="knobs">
+      <div class="lockrow"><button class="lock" id="lock" type="button" aria-pressed="false">Lock STR + TUNE</button><span class="lockval" id="lockval"></span></div>
+      <p class="hint" id="knobhint">Drag up or down; double-click resets. STR is finer near freeze (half a turn 1×, the end 4×); TUNE glides, Shift for semitones; SIZE gives the large K more of its turn. Shift is fine on STR and SIZE.</p>
+    </div>
+    <div class="box side">
+      <div class="row"><span class="cap">Play</span>
+        <div class="seg" id="playmode" role="group" aria-label="PLAY mode">
+          <button type="button" data-v="0">◀ Once</button><button type="button" data-v="1">◀ Loop</button>
+          <button type="button" data-v="2">Loop ▶</button><button type="button" data-v="3">Once ▶</button>
+        </div>
+        <label class="switch"><input type="checkbox" id="trans" checked> Transients</label>
+      </div>
+      <div class="modes" id="mode" role="group" aria-label="TR.DET mode">
+        <button class="mk" type="button" data-v="1"><b>Vol</b><span>The loudest hits first</span></button>
+        <button class="mk" type="button" data-v="2"><b>Grid</b><span>Even steps, each moved to the nearest transient</span></button>
+        <button class="mk" type="button" data-v="3"><b>Rand</b><span>A random pick of the transients</span></button>
+      </div>
+      <div class="lvl"><span class="cap">Smoothing</span><input type="range" id="smooth" min="0" max="1" step="0.001" aria-label="TKEO smoothing: the detector's follower cutoff"><span class="sval" id="smoothval"></span></div>
+      <div class="lvl"><span class="cap">Cut snap</span><input type="range" id="zc" min="0" max="480" step="8" value="480" aria-label="Cut snap: how far the cut may move to a zero crossing"><span class="sval" id="zcval"></span></div>
+      <div class="sboxes">
+        <div class="sbox"><span class="cap">Splices</span><div class="stats" id="stats-a"></div></div>
+        <div class="sbox"><span class="cap">Keyframes and transients</span><div class="stats" id="stats-b"></div></div>
+      </div>
+      <div class="fader">
+        <div class="fhead"><span class="cap">Thin</span><span class="fval" id="thinval"></span></div>
+        <div class="ftrack" id="thin" tabindex="0" role="slider" aria-label="THIN: transients kept">
+          <div class="fsegs" id="thinsegs"></div>
+          <div class="fcap" id="thincap"></div>
+        </div>
+        <div class="fends"><span>1</span><span id="thinmax"></span></div>
+      </div>
+      <div class="lvl"><span class="cap">Level</span><input type="range" id="vol" min="0" max="1" step="0.01" value="0.7" aria-label="Output level"></div>
+    </div>
+  </section>
+  <p class="foot">The engine is the unit's own C (kf/kf.c, kf/tkeo.c) compiled to WebAssembly, with no changes to its arithmetic, so every number matches the Digitakt's.
+    Samples play at 48 kHz in 32-sample blocks, one engine per channel, as on the unit. STR's knob here is curved for finer control near freeze; the unit's is linear. Keys: Space plays and stops.</p>
+</div>
+
+<script type="text/plain" id="core-src">
+// the engine's side (an AudioWorklet's, or the page's when there is none): build/kfweb.wasm's kw_* calls on k,
+// an instance's exports
+function makeCore(k) {
+  let seen = 0, tick = 0;
+  const buf = () => k.memory.buffer;
+  function handle(m) {
+    if (m.type === "sample") {
+      new Int16Array(buf(), k.kw_pcm(0), m.n).set(m.l);
+      if (m.r) new Int16Array(buf(), k.kw_pcm(1), m.n).set(m.r);
+      k.kw_sample(m.n, m.r ? 1 : 0);
+      seen = k.kw_log_n() >>> 0;
+    } else if (m.type === "set") k.kw_set(m.id, m.v);
+    else if (m.type === "cuts") {
+      new Int32Array(buf(), k.kw_cuts(), m.cuts.length).set(m.cuts);
+      k.kw_set_cuts(m.cuts.length);
+    } else if (m.type === "trig") { k.kw_set(4, m.s); k.kw_set(5, m.e); k.kw_trig(m.slice ? 1 : 0); }
+    else if (m.type === "region") { k.kw_set(4, m.s); k.kw_set(5, m.e); }
+    else if (m.type === "stop") k.kw_stop();
+  }
+  function snapshot() {
+    const nlog = k.kw_log_n() >>> 0, size = k.kw_log_size(), log = new Int32Array(buf(), k.kw_log(), size * 4);
+    const splices = [];
+    if (nlog - seen > size) seen = nlog - size;
+    for (; seen < nlog; seen++) { const j = (seen % size) * 4; splices.push([log[j], log[j + 1], log[j + 2], log[j + 3]]); }
+    const nk = k.kw_keys();
+    return {
+      ref: k.kw_head(0), play: k.kw_head(1), temp: k.kw_head(2), splicing: k.kw_splicing(), t: k.kw_fade_t(),
+      playing: k.kw_playing(), clock: k.kw_clock() >>> 0, leash: k.kw_leash(),
+      stats: [0, 1, 2, 3, 4, 5].map((i) => k.kw_stat(i) >>> 0),
+      keys: new Int32Array(buf(), k.kw_keybuf(), nk).slice(), splices,
+    };
+  }
+  function render(L, R) {
+    const n = L.length;
+    for (let off = 0; off < n;) {
+      const q = Math.min(1024, n - off);
+      k.kw_render(q);
+      L.set(new Float32Array(buf(), k.kw_out(0), q), off);
+      R.set(new Float32Array(buf(), k.kw_out(1), q), off);
+      off += q;
+    }
+    return (++tick & 3) === 0 ? snapshot() : null;
+  }
+  return { handle, render };
+}
+</script>
+<script type="text/plain" id="worklet-src">
+registerProcessor("kfweb", class extends AudioWorkletProcessor {
+  constructor(o) {
+    super();
+    this.core = makeCore(new WebAssembly.Instance(new WebAssembly.Module(o.processorOptions.bytes), {}).exports);
+    this.port.onmessage = (e) => this.core.handle(e.data);
+  }
+  process(_in, outputs) {
+    const o = outputs[0];
+    const s = this.core.render(o[0], o[1] || new Float32Array(o[0].length));
+    if (s) this.port.postMessage(s);
+    return true;
+  }
+});
+</script>
+<script>
+(async () => {
+"use strict";
+const WASM_B64 = "AGFzbQEAAAABfxNgAABgA39/fwBgBH9/f38AYAJ/fwBgAX8AYAN/f38Bf2AFf39/f38AYAJ/fwF/YAV/f39/fwF/YAR/f39/AX9gCX9/f39/f39/fwF/YAd/f39/f39/AGAGf39/f39/AGAEf39/fwF9YAJ/fQBgAX8BfWABfwF/YAABf2AAAX0DPz4AAQIDAgIBBAUGAQEGBwQECAkKCwUMDQUFDg8AEBEREREQEREREQMAERERERAQBwQOBAAQEBESEREREhIQEQUGAQGABYAIBq4BG38BQdCR4wsLfwBB8AgLfwBB/AgLfwBB+AgLfwBB9AgLfwBBgAkLfwBBoAkLfwBBkAkLfwBBlAkLfwBBpAkLfwBBjAkLfwBBmAkLfwBBnAkLfwBBqAkLfwBBhAkLfwBBiAkLfwBBgAgLfwBBgAgLfwBB0JHfCwt/AEHQkd8LC38AQdCR4wsLfwBBgAgLfwBB0JHjCwt/AEGAgIAUC38AQQALfwBBAQt/AEGAgAQLB/AHTwZtZW1vcnkCABFfX3dhc21fY2FsbF9jdG9ycwAAB2tmX2luaXQAAQdrZl90cmlnAAIJa2ZfcmVuZGVyAAQHa2ZfdGFpbAALB3RrX2luaXQADAp0a190X2RlbGF5AwEGdGtfcnVuAA0KdGtfdF9zdmZfZwMCEHRrX3Rfc3ZmX2ludl9kZW4DAwx0a190X3N2Zl9udW0DBAp0a190X2Zsb29yAwUPdGtfdF9vbnNldF9wZWFrAwYMdGtfdF9vbl9mcmFjAwcLdGtfdF92YWxsZXkDCAl0a190X3Jpc2UDCQl0a190X2h5c3QDCghrd190cmFjZQAPDHRrX3RfemNfYmFjawMLC3RrX3RfemNfZndkAwwLdGtfZ3JpZF9tYXgAEA50a190X3JlbF9mbG9vcgMNCHRrX3RfZ2FwAw4MdGtfdF9lbmRfZ2FwAw8MdGtfZ3JpZF9tb2RlABINdGtfY2FjaGVfZmlsbAATDXRrX2NhY2hlX2N1dHMAFA90a19jYWNoZV9yZWdpb24AFQZ0a190cm4AFgZtZW1zZXQAFwZtZW1jcHkAGAlrd190a19zZXQAGQ1rd190a19kZWZhdWx0ABoJa3dfdGtfZGVmAxALa3dfdGtfcmVzZXQAGwZrd19wY20AHAdrd19tYXhuAB0Ga3dfZGVjAB4Ga3df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0OXZiwAhAQsgAQvbAQECf0EAIQECQEEAKALwndeLACICQQhIDQACQCAAQQAoAsCIgIAARw0AQQAoAsjs3YsADwtBsOzdiwAgAEHQ5dmLAEEAKALApdmLACIBIAJBAUGwkd6LABCTgICAAAJAIABBA0cNAEGw7N2LACAAQdDl2YsAIAEgAkG6haPHfUGwkd6LABCTgICAAAtBACAANgK87N2LACAAQdDl2YsAIAEgAkHAACAAQbqFo8d9QcDR3osAQbCR3osAEJKAgIAAIQFBACAANgLAiICAAEEAIAE2Asjs3YsACyABC+MDAQN/QQAhAgJAQQAoAvCd14sAIgNBCEgNAAJAAkAgAEEAKALAiICAAEcNAEEAKALI7N2LACEDDAELQbDs3YsAIABB0OXZiwBBACgCwKXZiwAiBCADQQFBsJHeiwAQk4CAgAACQCAAQQNHDQBBsOzdiwAgAEHQ5dmLACAEIANBuoWjx31BsJHeiwAQk4CAgAALQQAgADYCvOzdiwAgAEHQ5dmLACAEIANBwAAgAEG6haPHfUHA0d6LAEGwkd6LABCSgICAACEDQQAgADYCwIiAgABBACADNgLI7N2LAAtBsOzdiwAgASADIAEgA0gbIgBBASAAQQFKG0HQjN6LABCUgICAACICQQFIDQAgAkEDcSEBQQAhAwJAIAJBBEkNACACQfz///8HcSEEQQAhAEEAIQMDQCAAQdCb1osAaiAAQdCM3osAaigCADYCACAAQdSb1osAaiAAQdSM3osAaigCADYCACAAQdib1osAaiAAQdiM3osAaigCADYCACAAQdyb1osAaiAAQdyM3osAaigCADYCACAAQRBqIQAgBCADQQRqIgNHDQALCyABRQ0AIANBAnQhAANAIABB0JvWiwBqIABB0IzeiwBqKAIANgIAIABBBGohACABQX9qIgENAAsLIAIL2wIBBH9BACEBIABBACAAQQBKGyICQcAAIAJBwABIGyEDAkAgAEEBSA0AIANBA3EhAgJAIABBBEgNACADQQJ0QXBxIQRBACEAQQAhAQNAIABB0KLZiwBqIABB0JvWiwBqKAIANgIAIABB1KLZiwBqIABB1JvWiwBqKAIANgIAIABB2KLZiwBqIABB2JvWiwBqKAIANgIAIABB3KLZiwBqIABB3JvWiwBqKAIANgIAIAFBBGohASAEIABBEGoiAEcNAAsLIAJFDQAgAUECdCEAA0AgAEHQotmLAGogAEHQm9aLAGooAgA2AgAgAEEEaiEAIAJBf2oiAg0ACwtBACADNgKAnteLAEEAIANBAEEAKALEiICAABsiADYC/J/XiwACQEEALQD8ndeLAA0AQQAgADYCmKLXiwAPC0GQnteLABCHgICAAEEAIAA2Apii14sAQayg14sAEIeAgIAAC6YCAAJAAkACQAJAAkACQAJAAkACQCAADggAAQIDBAUGBwgLQQAgATgCyIiAgAAQp4CAgAAPC0EAIAE4AuiQ3osAEKeAgIAADwtBACABOALMiICAABCngICAAA8LQQAgAfwAQQNxNgLQiICAABCngICAAA8LQQAgAfwANgL0ndeLABCngICAAA8LQQAgAfwANgL4ndeLABCngICAAA8LQQAgAUMAAAAAXCIANgLEiICAAEEAQQAoAoCe14sAQQAgABsiADYC/J/XiwACQEEALQD8ndeLAA0AQQAgADYCmKLXiwAQp4CAgAAPC0GQnteLABCHgICAAEEAIAA2Apii14sAQayg14sAEIeAgIAAEKeAgIAADwtBACABOALUiICAAAsQp4CAgAAL8wMDA38BfQR/AkBBACgC8J3XiwAiAUHAAEgNAAJAQQAoAvid14sAIgIgASACIAFIGyIDQQAoAvSd14sAIgJBACACQQBKGyICa0E/Sg0AIAFBQGogAiACQcAAaiIDIAFLGyECIAMgASADIAFJGyEDCwJAQQAoAryIgIAAQQFIDQAgA0F/aiIBIAEgAkEAKALQiICAAEECSBsgAkEAKgLYiICAACIEQwAAAABbGyAEQwAAAABdGyEFQQBBgIDAACAAGyEGQbj714AAIQNBkJ7XiwAhAkEAIQFBACEHA0BBACEIAkBBAC0A/J3XiwBFDQAgAUHgpNmLAGooAgBFIQgLIAFB7JDeiwBqIAg2AgAgAiADQQAoAvCd14sAIAUQgoCAgAAgAkGAAmpB0KLZiwA2AgAgAUHgpNmLAGpBADYCACABQfSQ3osAakEANgIAIAFB/JDeiwBqIAY2AgAgAkHsAWpBACgCgJ7XiwBBAEEAKALEiICAABs2AgAgAkGcAmohAiADQYiQvwVqIQMgAUEEaiEBIAdBAWoiB0EAKAK8iICAAEgNAAsLQQAgADYCkJHeiwBBAEEBOgD8ndeLAEEAQQAoAoig14sANgKEkd6LAEEAQQAoAvif14sANgKIkd6LAEEAQQAoApyf14sANgKMkd6LAAsLJwBBAEKBgICAEDcC4KTZiwBBAEIANwLopNmLAEEAQQA6APyd14sAC8EXBwh/AX0EfwN9AX8EfQN/I4CAgIAAQSBrIgEkgICAgAACQCAAQSBIDQAgAEGACCAAQYAISBshAkHgndaLACEDQSAhAEEAIQQDQCAEIQUgACEEAkACQEEALQD8ndeLAA0AIAVBAnQiAEEANgLgndaLACAAQeSd1osAakEANgIAIABB6J3WiwBqQQA2AgAgAEHsndaLAGpBADYCACAAQfCd1osAakEANgIAIABB9J3WiwBqQQA2AgAgAEH4ndaLAGpBADYCACAAQfyd1osAakEANgIAIABBgJ7WiwBqQQA2AgAgAEGEntaLAGpBADYCACAAQYie1osAakEANgIAIABBjJ7WiwBqQQA2AgAgAEGQntaLAGpBADYCACAAQZSe1osAakEANgIAIABBmJ7WiwBqQQA2AgAgAEGcntaLAGpBADYCACAAQaCe1osAakEANgIAIABBpJ7WiwBqQQA2AgAgAEGontaLAGpBADYCACAAQbCe1osAakEANgIAIABBrJ7WiwBqQQA2AgAgAEG0ntaLAGpBADYCACAAQbie1osAakEANgIAIABBvJ7WiwBqQQA2AgAgAEHAntaLAGpBADYCACAAQcSe1osAakEANgIAIABByJ7WiwBqQQA2AgAgAEHMntaLAGpBADYCACAAQdCe1osAakEANgIAIABB1J7WiwBqQQA2AgAgAEHYntaLAGpBADYCACAAQdye1osAakEANgIAIABBADYC4L3WiwAgAEHkvdaLAGpBADYCACAAQei91osAakEANgIAIABB7L3WiwBqQQA2AgAgAEH0vdaLAGpBADYCACAAQfC91osAakEANgIAIABB+L3WiwBqQQA2AgAgAEH8vdaLAGpBADYCACAAQYC+1osAakEANgIAIABBhL7WiwBqQQA2AgAgAEGIvtaLAGpBADYCACAAQYy+1osAakEANgIAIABBkL7WiwBqQQA2AgAgAEGUvtaLAGpBADYCACAAQZi+1osAakEANgIAIABBnL7WiwBqQQA2AgAgAEGgvtaLAGpBADYCACAAQaS+1osAakEANgIA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IAALC3UCAEGACAs8wIXbOnAbAEAHJX8/rMUnN9ejMD/NzEw9ZmaGPwAA5kIAAMBCAADAQgAAikQAABZFAAAAAM3MzD5vEoM6AEG8CAssAQAAAP////8BAAAAAACAPwAAcEIDAAAAAAAAOAAAgD8AAIA/QAAAAAEAAAAAwwUEbmFtZQALCmtmd2ViLndhc20BhwU+ABFfX3dhc21fY2FsbF9jdG9ycwEHa2ZfaW5pdAIHa2ZfdHJpZwMFa3NlZWsECWtmX3JlbmRlcgUGa2NvdmVyBgZrdGp1bXAHBmt0ZmluZAgGa2ZfcnVuCQRrb25lCgdrYm9yZGVyCwdrZl90YWlsDAd0a19pbml0DQZ0a19ydW4OCXRrX2NvbW1pdA8Ia3dfdHJhY2UQC3RrX2dyaWRfbWF4EQh0a19jYW5kcxIMdGtfZ3JpZF9tb2RlEw10a19jYWNoZV9maWxsFA10a19jYWNoZV9jdXRzFQ90a19jYWNoZV9yZWdpb24WBnRrX3RybhcGbWVtc2V0GAZtZW1jcHkZCWt3X3RrX3NldBoNa3dfdGtfZGVmYXVsdBsLa3dfdGtfcmVzZXQcBmt3X3BjbR0Ha3dfbWF4bh4Ga3dfZGVjHwZrd19lbnYgB2t3X2N1dHMhBmt3X291dCIGa3dfbG9nIwhrd19sb2dfbiQLa3dfbG9nX3NpemUlCWt3X2tleWJ1ZiYJa3dfc2FtcGxlJwZkZXJpdmUoCmt3X2FuYWx5emUpC2t3X2V2X2NvdW50Kgprd19jYWxfYnVmKwxrd19jYWxpYnJhdGUsCWt3X2V2X3Bvcy0La3dfdGhpbl9tYXguB2t3X3RoaW4vC2t3X3NldF9jdXRzMAZrd19zZXQxB2t3X3RyaWcyB2t3X3N0b3AzCWt3X3JlbmRlcjQHa3dfaGVhZDULa3dfc3BsaWNpbmc2CWt3X2ZhZGVfdDcKa3dfcGxheWluZzgIa3dfY2xvY2s5CGt3X2xlYXNoOgprd19zdHJldGNoOwhrd19waXRjaDwHa3dfc3RhdD0Ha3dfa2V5cwcSAQAPX19zdGFja19wb2ludGVyCRECAAcucm9kYXRhAQUuZGF0YQA4CXByb2R1Y2VycwEMcHJvY2Vzc2VkLWJ5AQxVYnVudHUgY2xhbmcRMjEuMS44ICg2dWJ1bnR1MSkAlAEPdGFyZ2V0X2ZlYXR1cmVzCCsLYnVsay1tZW1vcnkrD2J1bGstbWVtb3J5LW9wdCsWY2FsbC1pbmRpcmVjdC1vdmVybG9uZysKbXVsdGl2YWx1ZSsPbXV0YWJsZS1nbG9iYWxzKxNub250cmFwcGluZy1mcHRvaW50Kw9yZWZlcmVuY2UtdHlwZXMrCHNpZ24tZXh0";
+const SR = 48000;
+const $ = (id) => document.getElementById(id);
+const root = document.documentElement;
+const css = (n) => getComputedStyle(root).getPropertyValue(n).trim();
+
+/* ---- the palette: each hue a ramp, 0 lightest .. 4 deepest, through OKLCH; warm hues drift redder as they
+   darken, cool ones bluer; written back as --<hue>-<i> for the controls ---- */
+const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const gam = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+function toOklch(hex) {
+  const n = parseInt(hex.slice(1), 16), r = lin(((n >> 16) & 255) / 255), g = lin(((n >> 8) & 255) / 255), b = lin((n & 255) / 255);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b), m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b), s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  return [L, Math.hypot(A, B), (Math.atan2(B, A) * 180) / Math.PI];
+}
+function fromOklch(L, Cc, H) {
+  const A = Cc * Math.cos((H * Math.PI) / 180), B = Cc * Math.sin((H * Math.PI) / 180);
+  const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3, m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3, s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+  const rgb = [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+  return "#" + rgb.map((c) => Math.round(Math.min(1, Math.max(0, gam(Math.min(1, Math.max(0, c))))) * 255).toString(16).padStart(2, "0")).join("");
+}
+const HUES = ["rose", "powder", "green", "rust", "cream"];
+const P = {};
+for (const h of HUES) {
+  const base = css("--" + h), [L, Cc, H] = toOklch(base), warm = H < 140 || H > 320;
+  const steps = [[0.1, 0.75], [0, 1], [-0.12, 1.02], [-0.26, 0.9], [-0.38, 0.7]];
+  P[h] = steps.map(([dl, dc], i) => (i === 1 ? base : fromOklch(Math.max(0.12, L + dl), Cc * dc, H + (warm ? -5 : 5) * Math.max(0, i - 1))));
+  P[h].forEach((c, i) => root.style.setProperty(`--${h}-${i}`, c));
+}
+const C = { bg: css("--bg"), line: css("--screen-line"), ink: css("--screen-ink") };
+const MODE_HUE = { 1: "rose", 2: "powder", 3: "green" };
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`; };
+// a mode's slices alternate its colour and a step from it: the hue turned 55 degrees, a touch deeper
+const step = (hex) => { const [L, Cc, H] = toOklch(hex); return fromOklch(L - 0.05, Cc * 0.95, H + 55); };
+const PAIR = {};
+for (const m of [1, 2, 3]) PAIR[m] = { fill: [P[MODE_HUE[m]][1], step(P[MODE_HUE[m]][1])], text: [P[MODE_HUE[m]][0], step(P[MODE_HUE[m]][0])] };
+// a splice's arc: the leash's (the reference's colour), onto a transient (the mode's), at a border, forced at an edge
+const SPLICE = (kind) => (kind === 3 ? P.rust[0] : kind === 2 ? P[MODE_HUE[S.mode]][0] : kind === 1 ? P.cream[1] : P.rose[0]);
+
+const bytes = Uint8Array.from(atob(WASM_B64), (c) => c.charCodeAt(0));
+const coreSrc = $("core-src").textContent;
+const makeCore = new Function(coreSrc + "\nreturn makeCore;")();
+// the page's instance: the analysis, THIN's cuts (compiled asynchronously: Chrome refuses a synchronous compile
+// of more than 4 KB on the page's thread; the audio thread may)
+const wmod = await WebAssembly.compile(bytes);
+const A = (await WebAssembly.instantiate(wmod, {})).exports;
+const abuf = () => A.memory.buffer;
+
+/* ---- state ---- */
+const S = {
+  l: null, r: null, n: 0, name: "", env: null, envMax: 1,
+  all: [], cuts: [], mode: 1, thin: 16, thinMax: 1, trans: true,
+  s: 0, e: 0, slice: null,
+  str: 0.5, tune: 0, size: 60, sizep: (60 / 120) ** (1 / 0.6), play: 3,   // (str, sizep: knob positions; the stretch 4 p |p|, SIZE 120 p^0.6)
+  live: null, trails: [], rate: { t: 0, splices: 0, keys: 0, sps: 0, kps: 0 },
+  zoom: { auto: true, span: 0, hold: 0, t: 0, at: null },   // (at: where a drag left the view, nothing playing)
+};
+const strOf = (p) => 4 * p * Math.abs(p);
+let ctx = null, node = null, gain = null, core = null, engineReady = false;
+const pending = [];
+function post(m) {
+  if (!engineReady) { pending.push(m); return; }
+  if (node) node.port.postMessage(m); else if (core) core.handle(m);
+}
+
+/* ---- a demo loop: two bars of drums at 100 BPM, synthesized (no sample shipped) ---- */
+function demoLoop() {
+  const step = SR * 60 / 100 / 4, n = Math.round(step * 32);
+  const l = new Float32Array(n), r = new Float32Array(n);
+  let seed = 0x9e3779b9;
+  const rnd = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296 * 2 - 1; };
+  const add = (at, len, f, pan) => { for (let i = 0; i < len && at + i < n; i++) { const v = f(i / SR); l[at + i] += v * (1 - pan); r[at + i] += v * (1 + pan); } };
+  const kick = (at, a) => { let ph = 0; add(at, 0.5 * SR, (t) => { ph += 2 * Math.PI * (48 + 130 * Math.exp(-t * 32)) / SR; return a * Math.sin(ph) * Math.exp(-t * 7); }, 0); };
+  const snare = (at, a) => { let lp = 0; add(at, 0.35 * SR, (t) => { const x = rnd(); lp += 0.55 * (x - lp); return a * ((x - lp) * Math.exp(-t * 16) * 0.8 + Math.sin(2 * Math.PI * 186 * t) * Math.exp(-t * 28) * 0.6); }, 0.08); };
+  const hat = (at, a, open) => { let p = 0; add(at, (open ? 0.3 : 0.06) * SR, (t) => { const x = rnd(); const h = x - p; p = x; return a * h * Math.exp(-t * (open ? 11 : 70)); }, -0.25); };
+  const K = [0, 6, 10, 16, 19, 22, 26], Sn = [4, 12, 20, 28], G = [7, 15, 23, 30, 31];
+  for (const s of K) kick(Math.round(s * step), 0.95);
+  for (const s of Sn) snare(Math.round(s * step), 0.75);
+  for (const s of G) snare(Math.round(s * step), 0.18);
+  for (let s = 0; s < 32; s += 2) hat(Math.round(s * step), s % 4 === 2 ? 0.32 : 0.2, s === 14 || s === 30);
+  let peak = 0;
+  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(l[i]), Math.abs(r[i]));
+  for (let i = 0; i < n; i++) { l[i] *= 0.89 / peak; r[i] *= 0.89 / peak; }
+  return { l, r, n };
+}
+
+/* float [-1, 1] to int16 as kfrender.c does (lrint: ties to even) */
+function toI16(x, n) {
+  const o = new Int16Array(n);
+  for (let i = 0; i < n; i++) {
+    const v = x[i] * 32768;
+    let q = Math.round(v);
+    if (Math.abs(v - Math.trunc(v)) === 0.5) q = 2 * Math.round(v / 2);
+    o[i] = q > 32767 ? 32767 : q < -32768 ? -32768 : q;
+  }
+  return o;
+}
+
+/* ---- a sample in: analysed here, handed to the engine ---- */
+function setSample(l, r, n, name) {
+  n = Math.min(n, A.kw_maxn());
+  S.l = toI16(l, n); S.r = r ? toI16(r, n) : null; S.n = n; S.name = name;
+  new Int16Array(abuf(), A.kw_pcm(0), n).set(S.l);
+  if (S.r) new Int16Array(abuf(), A.kw_pcm(1), n).set(S.r);
+  A.kw_sample(n, S.r ? 1 : 0);
+  analyse();
+  S.s = 0; S.e = n; S.slice = null; S.zoom.span = S.zoom.hold = 0; S.zoom.at = null;
+  post({ type: "stop" });
+  post({ type: "sample", l: S.l, r: S.r, n });
+  for (const [id, v] of [[0, strOf(S.str)], [1, S.tune], [2, S.size], [3, S.play], [6, S.trans ? 1 : 0]]) post({ type: "set", id, v });
+  updateThin(true);
+  setPlaying(false);
+}
+
+/* the detector over the sample (the page's instance): its peaks, the envelope's trace, the label */
+function analyse() {
+  A.kw_analyze();
+  S.env = new Float32Array(abuf(), A.kw_env(), Math.ceil(S.n / A.kw_dec())).slice();
+  S.envMax = 1e-9;
+  for (const v of S.env) if (v > S.envMax) S.envMax = v;
+  $("file").textContent = `${S.name} · ${(S.n / SR).toFixed(2)} s · ${S.r ? "stereo" : "mono"} · ${A.kw_ev_count()} peaks`;
+}
+
+/* TKEO smoothing: the follower's cutoff (its SVF lowpass, Q 0.5: g = tan(pi fc / SR), num = 2 + g,
+   1 / (1 + 2g + g^2)) and the onset delay that follows its lag, as kf/host/tkweb.html does: the unit's TK_DELAY moved
+   by as much as the calibration hit's lag moves. At the unit's setting, its constants exactly */
+const FC_LO = 6, FC_HI = 150;
+{
+  const b = new Int16Array(abuf(), A.kw_cal_buf(), 16384);
+  for (let j = 0; j < 16384; j++) {
+    let y = 0;
+    if (j >= 4096) { const d = j - 4096, env = d < 1 ? d : Math.exp(-(d - 1) / (0.06 * SR)); y = 0.5 * env * Math.sin(2 * Math.PI * 2000 * d / SR); }
+    b[j] = Math.round(y * 32767);
+  }
+}
+A.kw_tk_reset();
+const CAL_DEF = A.kw_calibrate(), DELAY_DEF = A.kw_tk_default(7);
+const FC_DEF = Math.atan(A.kw_tk_default(0)) * SR / Math.PI;   // (the unit's: 25.59 Hz)
+const posOf = (fc) => Math.log(fc / FC_LO) / Math.log(FC_HI / FC_LO);
+const POS_DEF = posOf(FC_DEF);
+let smoothBusy = false;
+function setSmoothing(pos) {
+  const unit = Math.abs(pos - POS_DEF) < 0.012, fc = unit ? FC_DEF : FC_LO * (FC_HI / FC_LO) ** pos;
+  $("smooth").value = String(unit ? POS_DEF : pos);
+  if (unit) { A.kw_tk_reset(); setSnap(Number($("zc").value)); }   // (the reset leaves the cut snap as set)
+  else {
+    const g = Math.tan(Math.PI * fc / SR);
+    A.kw_tk_set(0, g); A.kw_tk_set(1, 2 + g); A.kw_tk_set(2, 1 / (1 + 2 * g + g * g));
+    const c = A.kw_calibrate();
+    A.kw_tk_set(7, c > -100000 ? Math.max(0, DELAY_DEF + c - CAL_DEF) : DELAY_DEF);
+  }
+  $("smoothval").textContent = unit ? `${fc.toFixed(1)} Hz · the unit's` : `${fc < 20 ? fc.toFixed(1) : Math.round(fc)} Hz`;
+  if (!S.n || smoothBusy) return;
+  smoothBusy = true;
+  requestAnimationFrame(() => { analyse(); updateThin(false); smoothBusy = false; });
+}
+
+/* cut snap: how far the detector may move a cut from its onset to a zero crossing (TK_ZC_BACK before it, TK_ZC_FWD
+   after in the unit's proportion). Up to 480, the unit's until 2026-10-25, to show what the wide reach did */
+const ZC_DEF = A.kw_tk_default(8), ZCF_DEF = A.kw_tk_default(9);
+let zcBusy = false;
+function setSnap(v) {
+  const unit = Math.abs(v - ZC_DEF) < 4;
+  A.kw_tk_set(8, unit ? ZC_DEF : v);
+  A.kw_tk_set(9, unit ? ZCF_DEF : Math.round(v * ZCF_DEF / ZC_DEF));
+  $("zc").value = String(unit ? ZC_DEF : v);
+  $("zcval").textContent = unit ? `${ZC_DEF} samples · the unit's` : `${v} samples · ${(v / 48).toFixed(1)} ms`;
+  if (!S.n || zcBusy) return;
+  zcBusy = true;
+  requestAnimationFrame(() => { analyse(); updateThin(false); zcBusy = false; });
+}
+
+/* the mode's colour through the page: the cut lines, THIN's fader, the transient jumps */
+function paintMode() {
+  const h = MODE_HUE[S.mode];
+  root.style.setProperty("--mode", P[h][1]);
+  root.style.setProperty("--mode-0", P[h][0]);
+  root.style.setProperty("--mode-3", P[h][3]);
+  root.style.setProperty("--mode-4", P[h][4]);
+  $("mode").querySelectorAll(".mk").forEach((b) => b.setAttribute("aria-pressed", Number(b.dataset.v) === S.mode ? "true" : "false"));
+  $("mode").dataset.off = S.trans ? "0" : "1";
+}
+
+/* THIN: the live cuts in the mode, and every cut the mode can keep (the faint ticks) */
+function updateThin(resetToMax) {
+  if (!S.n) return;
+  S.thinMax = Math.max(1, A.kw_thin_max(S.mode));
+  if (resetToMax) S.thin = Math.min(16, S.thinMax);
+  S.thin = Math.max(1, Math.min(S.thin, S.thinMax));
+  let got = A.kw_thin(S.mode, S.thinMax);
+  S.all = Array.from(new Int32Array(abuf(), A.kw_cuts(), got));
+  got = A.kw_thin(S.mode, S.thin);
+  S.cuts = Array.from(new Int32Array(abuf(), A.kw_cuts(), got));
+  post({ type: "cuts", cuts: Int32Array.from(S.cuts) });
+  if (S.slice) {   // (the selected slice: the new cuts' slice at the spot clicked, a playing note's region with it)
+    S.slice = sliceAt(S.pick);
+    post({ type: "region", s: S.slice[0], e: S.slice[1] });
+  }
+  paintFader();
+  drawWaveBase();
+}
+
+/* ---- audio ---- */
+async function startAudio() {
+  if (ctx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  try { ctx = new AC({ sampleRate: SR, latencyHint: "interactive" }); } catch (e) { ctx = new AC(); }
+  gain = ctx.createGain();
+  gain.gain.value = Number($("vol").value);
+  gain.connect(ctx.destination);
+  if (ctx.sampleRate !== SR) {
+    $("warn").hidden = false;
+    $("warn").textContent = `This browser runs audio at ${ctx.sampleRate} Hz. The engine works at 48 kHz like the unit, so playback here is ${((ctx.sampleRate / SR - 1) * 100).toFixed(1)}% off pitch and speed.`;
+  }
+  const code = coreSrc + "\n" + $("worklet-src").textContent;
+  let ok = false;
+  if (ctx.audioWorklet) {
+    for (const url of [URL.createObjectURL(new Blob([code], { type: "text/javascript" })), "data:text/javascript;charset=utf-8," + encodeURIComponent(code)]) {
+      try { await ctx.audioWorklet.addModule(url); ok = true; break; } catch (e) { /* the next way */ }
+    }
+  }
+  if (ok) {
+    node = new AudioWorkletNode(ctx, "kfweb", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { bytes: bytes.buffer.slice(0) } });
+    node.port.onmessage = (e) => onLive(e.data);
+    node.connect(gain);
+  } else {   // no AudioWorklet here: the page renders, a buffer at a time
+    core = makeCore((await WebAssembly.instantiate(wmod, {})).exports);
+    const sp = ctx.createScriptProcessor(1024, 0, 2);
+    sp.onaudioprocess = (e) => { const s = core.render(e.outputBuffer.getChannelData(0), e.outputBuffer.getChannelData(1)); if (s) onLive(s); };
+    sp.connect(gain);
+  }
+  engineReady = true;
+  for (const m of pending.splice(0)) post(m);
+}
+
+function setPlaying(on) { $("play").setAttribute("aria-pressed", on ? "true" : "false"); $("play").textContent = on ? "Stop" : "Play"; }
+
+async function trig(s, e, slice) {
+  await startAudio();
+  if (ctx.state !== "running") await ctx.resume();
+  post({ type: "trig", s, e, slice: slice ? 1 : 0 });
+  setPlaying(true);
+}
+function stop() { post({ type: "stop" }); setPlaying(false); }
+
+function onLive(m) {
+  S.live = m;
+  const now = performance.now();
+  for (const sp of m.splices) S.trails.push({ from: sp[0], to: sp[1], kind: sp[2], at: now });
+  if (S.trails.length > 160) S.trails.splice(0, S.trails.length - 160);
+  const dt = (m.clock - S.rate.t) / SR;
+  if (dt >= 0.5 || dt < 0) {
+    if (dt > 0) { S.rate.sps = (m.stats[0] - S.rate.splices) / dt; S.rate.kps = (m.stats[4] - S.rate.keys) / dt; }
+    S.rate.t = m.clock; S.rate.splices = m.stats[0]; S.rate.keys = m.stats[4];
+  }
+  if (!m.playing && $("play").getAttribute("aria-pressed") === "true") setPlaying(false);
+}
+
+/* ---- drawing ---- */
+const wave = $("wave"), zoom = $("zoom");
+const DPR = () => window.devicePixelRatio || 1;
+let waveBase = null;
+function fit(cv) {
+  const d = DPR(), w = Math.max(1, Math.round(cv.clientWidth * d)), h = Math.max(1, Math.round(cv.clientHeight * d));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; return true; }
+  return false;
+}
+const xOf = (f, w) => (f / Math.max(1, S.n)) * w;
+/* the sample view's rows: the splice lane on top, then the channels */
+function layout(h) {
+  const d = DPR(), lane = 78 * d, num = 16 * d, top = lane + num, body = h - top - 4 * d;
+  return { lane, top, lanes: S.r ? [[top, body / 2], [top + body / 2, body / 2]] : [[top, body]] };
+}
+
+/* the envelope's colour at frame f: its slice's deeper shade (the trace has the lighter), cream with no transients */
+function envCol(f, alpha) {
+  const i = sliceIdx(f);
+  return rgba(i < 0 ? P.cream[1] : PAIR[S.mode].fill[i % 2], alpha);
+}
+/* the envelope's outline through ys (one point a pixel, at frames fs), a path a run of one colour */
+function envLine(g, ys, fs, lw) {
+  let col = null;
+  g.lineWidth = lw;
+  for (let x = 0; x < ys.length; x++) {
+    const cc = envCol(fs[x], 0.62);
+    if (cc !== col) { if (col) { g.lineTo(x, ys[x]); g.stroke(); } g.strokeStyle = col = cc; g.beginPath(); g.moveTo(x ? x - 1 : 0, ys[x ? x - 1 : 0]); }
+    g.lineTo(x, ys[x]);
+  }
+  g.stroke();
+}
+
+/* the trace's colour at frame f: its slice's (the lighter of the pair), cream with no transients */
+function sliceIdx(f) {
+  const c = S.cuts;
+  if (!S.trans || c.length < 2) return -1;
+  let lo = 0, hi = c.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (c[m] <= f) lo = m; else hi = m - 1; }
+  return lo;
+}
+function traceCol(f) {
+  const i = sliceIdx(f);
+  return i < 0 ? rgba(C.ink, 0.95) : PAIR[S.mode].text[i % 2];
+}
+
+/* a chosen cut's marker: a dot in the colour of the slice it starts (the lighter of the pair, alternating as the
+   zones do), ringed dark so it reads on any slice */
+function cutDot(g, x, y, d, i) {
+  x = Math.max(5 * d, Math.min(g.canvas.width - 6 * d, x));   // (inside the view: the first cut is at 0)
+  g.fillStyle = "#0b0b0d"; g.beginPath(); g.arc(x + 0.5 * d, y, 5 * d, 0, 2 * Math.PI); g.fill();
+  g.fillStyle = PAIR[S.mode].text[i % 2]; g.beginPath(); g.arc(x + 0.5 * d, y, 3.6 * d, 0, 2 * Math.PI); g.fill();
+}
+
+function drawWaveBase() {
+  fit(wave);
+  const w = wave.width, h = wave.height, d = DPR();
+  waveBase = waveBase || document.createElement("canvas");
+  waveBase.width = w; waveBase.height = h;
+  const g = waveBase.getContext("2d");
+  g.fillStyle = C.bg; g.fillRect(0, 0, w, h);
+  if (!S.n) return;
+  const Ly = layout(h), top = Ly.top, mh = P[MODE_HUE[S.mode]];
+  // the splice lane's floor
+  g.fillStyle = "#0b0b0d"; g.fillRect(0, 0, w, Ly.lane);
+  g.fillStyle = C.line; g.fillRect(0, Ly.lane, w, Math.max(1, d));
+  // the slices: the mode's colour and its partner's in turn
+  for (let i = 0; i < S.cuts.length; i++) {
+    const a = xOf(S.cuts[i], w), b = xOf(i + 1 < S.cuts.length ? S.cuts[i + 1] : S.n, w);
+    const col = PAIR[S.mode].fill[i % 2];
+    g.fillStyle = rgba(col, S.trans ? 0.08 : 0.03); g.fillRect(a, top, b - a, h - top);
+    g.fillStyle = rgba(col, S.trans ? 0.85 : 0.25); g.fillRect(a, top - 3 * d, b - a, 3 * d);
+  }
+  // the TKEO envelope, behind (square root, against its highest)
+  const dec = A.kw_dec(), envTop = [], envF = [];
+  for (let x = 0; x < w; x++) {
+    const f = Math.floor((x / w) * S.n), a = Math.floor(f / dec), b = Math.max(a + 1, Math.floor(((x + 1) / w) * S.n / dec));
+    let m = 0;
+    for (let i = a; i < b && i < S.env.length; i++) if (S.env[i] > m) m = S.env[i];
+    const v = Math.sqrt(Math.max(0, m) / S.envMax) * (h - top);
+    g.fillStyle = envCol(f, 0.16);
+    g.fillRect(x, h - v, 1, v);
+    envTop.push(h - v); envF.push(f);
+  }
+  envLine(g, envTop, envF, 1.2 * d);   // (its outline: the energy the detector reads)
+  // the sample: min/max a pixel, in its slice's colour
+  const chans = S.r ? [S.l, S.r] : [S.l];
+  chans.forEach((ch, c) => {
+    const [y0, lh] = Ly.lanes[c], mid = y0 + lh / 2, sc = lh / 2 / 32768 * 0.95;
+    for (let x = 0; x < w; x++) {
+      const a = Math.floor((x / w) * S.n), b = Math.max(a + 1, Math.floor(((x + 1) / w) * S.n));
+      let lo = 32767, hi = -32768;
+      for (let i = a; i < b; i++) { const v = ch[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+      g.fillStyle = traceCol(a);
+      g.fillRect(x, mid - hi * sc, 1, Math.max(1, (hi - lo) * sc));
+    }
+  });
+  // every cut the mode can keep (ticks), the live ones (lines in the mode's colour, numbered in their slice's)
+  g.fillStyle = rgba(mh[0], 0.5);
+  for (const c of S.all) g.fillRect(Math.round(xOf(c, w)), top - 9 * d, Math.max(1, d), 5 * d);
+  g.globalAlpha = S.trans ? 1 : 0.35;
+  S.cuts.forEach((c, i) => cutDot(g, Math.round(xOf(c, w)), top - 7 * d, d, i));
+  g.font = `700 ${12 * d}px ${css("--f-mono")}`;
+  g.textBaseline = "top";
+  S.cuts.forEach((c, i) => {
+    const x = Math.round(xOf(c, w));
+    g.fillStyle = mh[1]; g.fillRect(x, top, Math.max(1, d), h - top);
+    g.fillStyle = PAIR[S.mode].text[i % 2];
+    if (S.cuts.length <= 32 || i % 2 === 0) g.fillText(String(i + 1), x + 3 * d, top + 3 * d);
+  });
+  g.globalAlpha = 1;
+  g.fillStyle = C.line;
+  if (S.r) g.fillRect(0, Math.round(Ly.lanes[1][0]), w, Math.max(1, d));
+}
+
+function drawWave() {
+  if (fit(wave) || !waveBase || waveBase.width !== wave.width) drawWaveBase();
+  const g = wave.getContext("2d"), w = wave.width, h = wave.height, d = DPR();
+  g.drawImage(waveBase, 0, 0);
+  if (!S.n) return;
+  const Ly = layout(h), top = Ly.top;
+  // the region: outside dimmed, its edges as handles
+  const rs = S.slice ? S.slice[0] : S.s, re = S.slice ? S.slice[1] : S.e;
+  const xs = xOf(rs, w), xe = xOf(re, w);
+  g.fillStyle = "rgba(7, 7, 9, 0.48)";
+  g.fillRect(0, top, xs, h - top); g.fillRect(xe, top, w - xe, h - top);
+  g.fillStyle = P.cream[1];
+  for (const x of [xs, xe]) g.fillRect(Math.round(x) - d, Ly.lane + 2 * d, 2 * d, h - Ly.lane);
+  g.beginPath(); g.moveTo(xs, Ly.lane + 2 * d); g.lineTo(xs + 10 * d, Ly.lane + 7 * d); g.lineTo(xs, Ly.lane + 12 * d); g.fill();
+  g.beginPath(); g.moveTo(xe, Ly.lane + 2 * d); g.lineTo(xe - 10 * d, Ly.lane + 7 * d); g.lineTo(xe, Ly.lane + 12 * d); g.fill();
+  // the splice lane: each splice an arc from where the play head was to where it went, fading
+  const now = performance.now(), LIFE = 1800;
+  S.trails = S.trails.filter((t) => now - t.at < LIFE);
+  const base = Ly.lane - 4 * d, last = S.trails.length - 1;
+  g.lineCap = "round";
+  S.trails.forEach((t, j) => {
+    const age = (now - t.at) / LIFE, a = (1 - age) ** 1.6 * 0.95, x0 = xOf(t.from, w), x1 = xOf(t.to, w);
+    const hgt = Math.min(Ly.lane - 10 * d, 10 * d + Math.sqrt(Math.abs(x1 - x0) / d) * 7 * d);
+    const col = SPLICE(t.kind), fresh = j === last && age < 0.2;
+    g.strokeStyle = col; g.globalAlpha = a;
+    g.lineWidth = (fresh ? 2.6 : 1.4) * d;
+    g.shadowColor = col; g.shadowBlur = fresh ? 8 * d : 0;
+    g.beginPath(); g.moveTo(x0, base); g.quadraticCurveTo((x0 + x1) / 2, base - hgt * 2, x1, base); g.stroke();
+    g.shadowBlur = 0;
+    if (fresh) { g.fillStyle = col; g.beginPath(); g.arc(x1, base, 2.6 * d, 0, 2 * Math.PI); g.fill(); }
+  });
+  g.globalAlpha = 1;
+  const m = S.live;
+  if (m && m.playing) {
+    const head = (f, col, wd, dash) => { const x = Math.round(xOf(f, w)); g.strokeStyle = col; g.lineWidth = wd * d; g.setLineDash(dash ? [4 * d, 3 * d] : []); g.beginPath(); g.moveTo(x, Ly.lane); g.lineTo(x, h); g.stroke(); g.setLineDash([]); };
+    const xr = xOf(m.ref, w), xp = xOf(m.play, w);
+    g.fillStyle = rgba(P.rose[1], 0.16);
+    g.fillRect(Math.min(xr, xp), top, Math.abs(xp - xr), h - top);
+    if (m.splicing) head(m.temp, P.cream[1], 1.5, true);
+    head(m.ref, P.rose[0], 2, false);
+    head(m.play, P.powder[0], 2, false);
+    headTags(g, [[xr, P.rose[0], "REF"], [xp, P.powder[0], "PLAY"]], h - 18 * d, d, w);
+  }
+  $("waveread").textContent = `region ${(rs / SR).toFixed(3)}–${(re / SR).toFixed(3)} s` + (S.slice ? " · slice" : "");
+}
+
+/* the zoomed view's width: auto follows the heads' distance, held at its peak and let go slowly (no lurch at
+   each splice), eased toward; the wheel takes it over, "Auto zoom" gives it back */
+function zoomSpan(dist, playing) {
+  const Z = S.zoom, now = performance.now(), dt = Math.min(0.1, Z.t ? (now - Z.t) / 1000 : 0.016);
+  Z.t = now;
+  if (!Z.auto) return Z.span;
+  if (!playing && Z.span) return Z.span;   /* (nothing playing: it stays where it was) */
+  const want = Math.min(S.n, Math.max(1536, dist * 2.4 + 960));
+  if (!Z.hold) Z.hold = Z.span = want;
+  if (want > Z.hold) Z.hold += (want - Z.hold) * (1 - Math.exp(-dt / 0.35));
+  else Z.hold += (want - Z.hold) * (1 - Math.exp(-dt / 4));
+  Z.span += (Z.hold - Z.span) * (1 - Math.exp(-dt / 0.45));
+  return Z.span;
+}
+
+/* small labels on the heads (REF, PLAY, IN: the incoming head of a crossfade), pushed apart when they meet */
+function headTags(g, tags, y, d, w) {
+  g.font = `600 ${10 * d}px ${css("--f-display")}`;
+  g.textBaseline = "middle";
+  tags.sort((p, q) => p[0] - q[0]);
+  let right = -1e9;
+  for (const [x, col, txt] of tags) {
+    const tw = g.measureText(txt).width + 10 * d;
+    let x0 = Math.max(x + 3 * d, right + 2 * d);
+    if (x0 + tw > w) x0 = Math.max(0, x - 3 * d - tw);
+    g.fillStyle = col; g.fillRect(x0, y - 7 * d, tw, 14 * d);
+    g.fillStyle = "#141316"; g.fillText(txt, x0 + 5 * d, y + 0.5 * d);
+    right = x0 + tw;
+  }
+}
+
+function drawZoom() {
+  fit(zoom);
+  const g = zoom.getContext("2d"), w = zoom.width, h = zoom.height, d = DPR();
+  g.fillStyle = C.bg; g.fillRect(0, 0, w, h);
+  if (!S.n) return;
+  const m = S.live, playing = !!(m && m.playing);
+  if (playing) S.zoom.at = null;   // (a note playing: the view follows it again)
+  const rest = S.zoom.at != null ? S.zoom.at : (S.slice ? S.slice[0] : S.s);
+  const ref = playing ? m.ref : rest, play = playing ? m.play : ref;
+  let dist = Math.abs(play - ref);
+  if (dist > S.n / 2) dist = S.n - dist;
+  const span = zoomSpan(dist, playing), c = ref, a = c - span / 2;
+  const off = (f) => { let o = f - a; while (o < 0) o += S.n; while (o >= S.n) o -= S.n; return o; };
+  const fx = (f) => (off(f) / span) * w, inView = (f) => off(f) <= span;
+  const top = 26 * d, bot = h - 4 * d, mid = (top + bot) / 2, sc = (bot - top) / 2 / 32768 * 0.95;
+  const at = (i) => { i = Math.floor(i) % S.n; if (i < 0) i += S.n; return S.l[i]; };
+  // the slices in view, the mode's pair
+  for (let i = 0; i < S.cuts.length; i++) {
+    const s0 = S.cuts[i], s1 = i + 1 < S.cuts.length ? S.cuts[i + 1] : S.n;
+    const x0 = (s0 - a) / span * w, x1 = (s1 - a) / span * w;
+    if (x1 < 0 || x0 > w) continue;
+    g.fillStyle = rgba(PAIR[S.mode].fill[i % 2], S.trans ? 0.07 : 0.03); g.fillRect(Math.max(0, x0), top, Math.min(w, x1) - Math.max(0, x0), bot - top);
+  }
+  {   // the TKEO envelope, as in the sample view (square root, against its highest), between its points linear;
+      // in its slices' deeper colours
+    const dec = A.kw_dec(), ne = S.env.length, ys = new Float32Array(w + 1), fs = new Float64Array(w + 1), per0 = span / w;
+    for (let x = 0; x <= w; x++) {
+      let f = a + x * per0;
+      f = ((f % S.n) + S.n) % S.n;
+      fs[x] = f;
+      let v;
+      if (per0 >= dec) {   // (more than a point a pixel: the highest)
+        v = 0;
+        for (let i = Math.floor(f / dec), e = Math.floor((f + per0) / dec); i <= e && i < ne; i++) if (S.env[i] > v) v = S.env[i];
+      } else {
+        const fi = f / dec, i0 = Math.min(ne - 1, Math.floor(fi)), i1 = Math.min(ne - 1, i0 + 1), t = fi - Math.floor(fi);
+        v = S.env[i0] + (S.env[i1] - S.env[i0]) * t;
+      }
+      ys[x] = bot - Math.sqrt(Math.max(0, v) / S.envMax) * (bot - top);
+    }
+    for (let x = 0; x < w; x++) { g.fillStyle = envCol(fs[x], 0.14); g.fillRect(x, ys[x], 1, bot - ys[x]); }
+    envLine(g, ys, fs, 1.3 * d);
+  }
+  g.strokeStyle = C.line; g.lineWidth = d; g.beginPath(); g.moveTo(0, mid); g.lineTo(w, mid); g.stroke();
+  g.fillStyle = P[MODE_HUE[S.mode]][1]; g.globalAlpha = S.trans ? 0.9 : 0.3;
+  for (const t of S.cuts) if (inView(t)) g.fillRect(Math.round(fx(t)), top, Math.max(1, d), bot - top);
+  S.cuts.forEach((t, i) => { if (inView(t)) cutDot(g, Math.round(fx(t)), top + 1 * d, d, i); });
+  g.globalAlpha = 1;
+  if (playing) {   // the leash: from the reference to the play head
+    const xr = w / 2, xp = fx(play);
+    g.fillStyle = rgba(P.rose[1], 0.14);
+    g.fillRect(Math.min(xr, xp), top, Math.abs(xp - xr), bot - top);
+  }
+  // the sample (the left channel), in its slices' colours: a line, or min/max when dense
+  const wrapF = (i) => { i = Math.floor(i) % S.n; return i < 0 ? i + S.n : i; };
+  g.lineWidth = 1.4 * d;
+  const per = span / w;
+  if (per < 2) {   // (a path a run of one colour, each joined to the last point)
+    let col = null, px = 0, py = 0;
+    for (let x = 0; x <= w; x++) {
+      const f = wrapF(a + x * per), y = mid - S.l[f] * sc, cc = traceCol(f);
+      if (cc !== col) { if (col) { g.lineTo(x, y); g.stroke(); } g.strokeStyle = col = cc; g.beginPath(); g.moveTo(x ? px : x, x ? py : y); }
+      g.lineTo(x, y); px = x; py = y;
+    }
+    g.stroke();
+  } else {
+    for (let x = 0; x < w; x++) {
+      let lo = 32767, hi = -32768;
+      for (let i = a + x * per; i < a + (x + 1) * per; i++) { const v = at(i); if (v < lo) lo = v; if (v > hi) hi = v; }
+      g.fillStyle = traceCol(wrapF(a + x * per));
+      g.fillRect(x, mid - hi * sc, 1, Math.max(1, (hi - lo) * sc));
+    }
+  }
+  // the keyframes that count: the ones between the heads (past K of them, a splice)
+  let between = 0;
+  if (playing) {
+    const lo = Math.min(ref, play), hi = Math.max(ref, play), near = hi - lo < S.n / 2;
+    const r = Math.max(1.6, Math.min(3.2, 2400 / span)) * d;
+    for (const kf of m.keys) {
+      const inside = near && kf > lo && kf < hi;
+      if (inside) between++;
+      if (!inView(kf)) continue;
+      const x = fx(kf);
+      if (inside) { g.fillStyle = P.green[0]; g.beginPath(); g.arc(x, mid - S.l[kf] * sc, r, 0, 2 * Math.PI); g.fill(); }
+    }
+    const head = (x, col, wd, dash) => { g.strokeStyle = col; g.lineWidth = wd * d; g.setLineDash(dash ? [4 * d, 3 * d] : []); g.beginPath(); g.moveTo(Math.round(x), top); g.lineTo(Math.round(x), bot); g.stroke(); g.setLineDash([]); };
+    if (m.splicing) head(fx(m.temp), P.cream[1], 1.5, true);
+    head(w / 2, P.rose[0], 2, false);
+    head(fx(play), P.powder[0], 2, false);
+    headTags(g, [[w / 2, P.rose[0], "REF"], [fx(play), P.powder[0], "PLAY"]].concat(m.splicing ? [[fx(m.temp), P.cream[1], "IN"]] : []), top + 12 * d, d, w);   // (at the top: clear of the zoom button)
+  }
+  $("zoomread").textContent = playing ? `${between} of K ${m.leash} keyframes between the heads${m.splicing ? " · crossfading" : ""}` : "press Play, or click a slice";
+  $("zoomms").textContent = `${(span / SR * 1000).toFixed(0)} ms`;
+}
+
+function drawStats() {
+  const m = S.live, st = m ? m.stats : [0, 0, 0, 0, 0, 0], on = !!(m && m.playing);
+  const fill = (id, items) => {
+    const el = $(id);
+    if (!el.children.length) el.innerHTML = items.map(() => '<div class="stat"><b></b><span></span></div>').join("");
+    items.forEach(([v, l], i) => { el.children[i].firstChild.textContent = v; el.children[i].lastChild.textContent = l; });
+  };
+  fill("stats-a", [[on ? S.rate.sps.toFixed(1) : "–", "a second"], [String(st[1]), "onto transients"], [String(st[2]), "at borders"]]);
+  fill("stats-b", [[on ? Math.round(S.rate.kps).toLocaleString() : "–", "keyframes / s"], [String(sizeK(S.size)), "K, the leash"], [String(S.trans ? S.cuts.length : 0), "transients live"]]);
+}
+
+function frame() { drawWave(); drawZoom(); drawStats(); requestAnimationFrame(frame); }
+
+/* ---- knobs: Rogans seen from above (a skirt, a fluted body, a coloured top, a cream line down the side) ---- */
+function sizeK(s) {   // kf/sharc/dt2.c kf_size_k, for the readout
+  const h = Math.min(0x7800, Math.max(0, Math.floor(s * 256)));
+  const a = Math.floor((h * 26215) / 2 ** 26), u = Math.floor(((h - a * 2560) * 1677722) / 65536);
+  let r = 5186; r = Math.floor((r * u) / 65536) + 14742; r = Math.floor((r * u) / 65536) + 45608; r = Math.floor((r * u) / 65536) + 65536;
+  return Math.min(4096 - 512, Math.floor((r * 2 ** a + 32768) / 65536));   // (the unit's cap: its ring less 512)
+}
+/* SIZE's knob: its position p (0 .. 1) to SIZE (0 .. 120), 120 p^0.6: the large K get more of the turn (half way K 240,
+   the last quarter K 1300 .. 3584), where SIZE itself (K = 2^(SIZE / 10)) gives every doubling the same */
+const SIZE_CURVE = 0.6;
+const sizeOf = (p) => 120 * Math.max(0, p) ** SIZE_CURVE;
+function sizePos(sz) { return (sz / 120) ** (1 / SIZE_CURVE); }
+const fmtStr = (p) => { const v = strOf(p); return v === 0 ? "freeze" : (v > 0 ? "" : "−") + Math.abs(v).toFixed(Math.abs(v) < 0.1 ? 3 : 2) + "×"; };
+const KNOBS = [
+  { id: 0, key: "str", label: "STR", min: -1, max: 1, step: 0.005, coarse: 0.025, def: 0.5, send: strOf, fmt: fmtStr, sub: "the reference's speed" },
+  { id: 1, key: "tune", label: "TUNE", min: -60, max: 60, step: 0.01, fine: 0.01, keys: [0.1, 1], shiftSnap: 1, def: 0,   /* (it glides; Shift: semitones) */
+    fmt: (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(Number.isInteger(v) ? 0 : 2) + " st", sub: "the play head's pitch" },
+  { id: 2, key: "sizep", label: "SIZE", min: 0, max: 1, step: 0.0001, fine: 0.0001, keys: [0.01, 0.002], def: sizePos(60),
+    send: (p) => (S.size = sizeOf(p)), fmt: (p) => `K ${sizeK(sizeOf(p))}`, sub: "the leash, in keyframes" },
+];
+function knob(spec) {
+  const el = document.createElement("div");
+  el.className = "knob";
+  const k = spec.key;
+  el.innerHTML = `<svg viewBox="-60 -60 120 120" id="knob-${k}" tabindex="0" role="slider" aria-label="${spec.label}" aria-valuemin="${spec.min}" aria-valuemax="${spec.max}"></svg><span class="lbl">${spec.label}</span><span class="val"></span><span class="sub">${spec.sub}</span>`;
+  const svg = el.querySelector("svg"), val = el.querySelector(".val");
+  const A0 = -150, A1 = 150, fineStep = spec.fine || spec.step, coarse = spec.coarse || spec.step;
+  const angOf = (v) => A0 + ((v - spec.min) / (spec.max - spec.min)) * (A1 - A0);
+  let flutes = "";
+  for (let i = 0; i < 18; i++) flutes += `<rect x="-2.7" y="-42" width="5.4" height="12" rx="2.7" fill="#0b0b0b" transform="rotate(${i * 20 + 10})"/>`;
+  svg.innerHTML = `<defs>
+      <radialGradient id="sk-${k}" cx="0.4" cy="0.35" r="0.75"><stop offset="0" stop-color="#3b3b3b"/><stop offset="1" stop-color="#141414"/></radialGradient>
+      <linearGradient id="bd-${k}" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#383838"/><stop offset="1" stop-color="#101010"/></linearGradient>
+      <radialGradient id="cp-${k}" cx="0.36" cy="0.32" r="0.8"><stop offset="0" stop-color="#ffffff"/><stop offset="0.6" stop-color="#ece9e4"/><stop offset="1" stop-color="#c9c4bd"/></radialGradient></defs>
+    <circle r="56" cy="4" fill="rgba(0, 0, 0, 0.45)"/>
+    <circle r="54" fill="url(#sk-${k})" stroke="#0a0a0a" stroke-width="1"/>
+    <g class="rot"><circle r="42" fill="url(#bd-${k})" stroke="#0a0a0a" stroke-width="0.8"/>${flutes}
+      <rect x="-2.8" y="-54" width="5.6" height="27" rx="1.2" fill="#f1ebdf"/></g>
+    <circle r="28" fill="url(#cp-${k})" stroke="rgba(0, 0, 0, 0.5)" stroke-width="1.2"/>
+    <ellipse cx="-8" cy="-10" rx="12" ry="6" fill="rgba(255, 255, 255, 0.16)" transform="rotate(-32)"/>`;
+  const rot = svg.querySelector(".rot");
+  const set = (v, send, link) => {
+    v = Math.min(spec.max, Math.max(spec.min, v));
+    v = Number((Math.round(v / fineStep) * fineStep).toFixed(4));
+    S[spec.key] = v;
+    rot.setAttribute("transform", `rotate(${angOf(v)})`);
+    val.textContent = spec.fmt(v);
+    svg.setAttribute("aria-valuenow", String(v));
+    svg.setAttribute("aria-valuetext", spec.fmt(v));
+    if (send) post({ type: "set", id: spec.id, v: spec.send ? spec.send(v) : v });
+    if (send && !link) coupled(spec.key);
+  };
+  spec.set = set;
+  let drag = null;
+  svg.addEventListener("pointerdown", (e) => { try { svg.setPointerCapture(e.pointerId); } catch (err) { /* (not a live pointer) */ } drag = { y: e.clientY, v: S[spec.key] }; svg.focus(); e.preventDefault(); });
+  svg.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const snap = spec.shiftSnap && e.shiftKey;   // (TUNE: Shift snaps to semitones at full speed; else Shift is fine)
+    let v = drag.v + ((drag.y - e.clientY) / 240) * (spec.max - spec.min) * (e.shiftKey && !spec.shiftSnap ? 0.12 : 1);
+    if (snap) v = Math.round(v);
+    else if (!e.shiftKey) v = Math.round(v / spec.step) * spec.step;
+    set(v, true);
+  });
+  const end = () => { drag = null; };
+  svg.addEventListener("pointerup", end); svg.addEventListener("pointercancel", end);
+  svg.addEventListener("dblclick", () => set(spec.def, true));
+  const keyStep = (shift) => (spec.keys ? spec.keys[shift ? 1 : 0] : shift ? fineStep : coarse);
+  svg.addEventListener("wheel", (e) => { e.preventDefault(); set(S[spec.key] - Math.sign(e.deltaY) * keyStep(e.shiftKey), true); }, { passive: false });
+  svg.addEventListener("keydown", (e) => {
+    const st = keyStep(e.shiftKey);
+    if (e.key === "ArrowUp" || e.key === "ArrowRight") { set(S[spec.key] + st, true); e.preventDefault(); }
+    if (e.key === "ArrowDown" || e.key === "ArrowLeft") { set(S[spec.key] - st, true); e.preventDefault(); }
+    if (e.key === "Home") { set(spec.def, true); e.preventDefault(); }
+  });
+  set(S[spec.key], false);
+  return el;
+}
+/* STR and TUNE locked: their ratio held (the play head's rate over the reference's), so turning either takes
+   the other along: the same splices and borders, slower or faster to watch. TUNE within +-60 (the unit's range), STR within +-4x and
+   on its side of freeze; where one would pass its limit, both stop there */
+const LOCK = { on: false, ratio: 1 };
+const pitchOf = (t) => 2 ** (t / 12);
+const posOfStr = (st) => Math.sign(st) * Math.sqrt(Math.abs(st) / 4);
+function coupled(key) {
+  if (!LOCK.on) return;
+  const ks = KNOBS[0], kt = KNOBS[1];
+  if (key === "str") {
+    const st = strOf(S.str), p = LOCK.ratio * st;
+    if (!(p > 0)) { ks.set(posOfStr(pitchOf(S.tune) / LOCK.ratio), true, true); return; }   // (not across freeze)
+    let t = 12 * Math.log2(p);
+    if (t > 60 || t < -60) { t = Math.max(-60, Math.min(60, t)); ks.set(posOfStr(pitchOf(t) / LOCK.ratio), true, true); }
+    kt.set(t, true, true);
+  } else if (key === "tune") {
+    let st = pitchOf(S.tune) / LOCK.ratio;
+    if (Math.abs(st) > 4) { st = Math.sign(st) * 4; kt.set(12 * Math.log2(LOCK.ratio * st), true, true); }
+    ks.set(posOfStr(st), true, true);
+  }
+}
+function paintLock() {
+  $("lock").setAttribute("aria-pressed", LOCK.on ? "true" : "false");
+  $("lockval").textContent = LOCK.on ? `play head ${LOCK.ratio.toFixed(2)}× the reference` : "";
+}
+$("lock").addEventListener("click", () => {
+  if (!LOCK.on && strOf(S.str) === 0) { $("lockval").textContent = "STR is at freeze: move it first"; return; }
+  LOCK.on = !LOCK.on;
+  if (LOCK.on) LOCK.ratio = pitchOf(S.tune) / strOf(S.str);
+  paintLock();
+});
+for (const k of KNOBS) $("knobs").insertBefore(knob(k), $("knobs").querySelector(".lockrow"));
+
+
+/* ---- THIN's crossfader ---- */
+const fader = $("thin");
+/* a segment a transient THIN can keep, lit up to its value in the mode's colour, stepping from deep to light */
+function paintFader() {
+  const n = S.thinMax, h = MODE_HUE[S.mode];
+  $("thinval").textContent = `${S.cuts.length} of ${n} transients`;
+  $("thinmax").textContent = String(n);
+  const segs = $("thinsegs");
+  if (segs.children.length !== n) segs.innerHTML = "<i></i>".repeat(n);
+  const [L3, C3, H3] = toOklch(P[h][3]), [L0, C0, H0] = toOklch(P[h][0]);
+  for (let i = 0; i < n; i++) {
+    const f = n > 1 ? i / (n - 1) : 1;
+    segs.children[i].style.background = i < S.thin ? fromOklch(L3 + (L0 - L3) * f, C3 + (C0 - C3) * f, H3 + (H0 - H3) * f) : "";
+  }
+  $("thincap").style.left = `calc(22px + (100% - 44px) * ${((S.thin - 0.5) / n).toFixed(4)})`;
+  fader.setAttribute("aria-valuemin", "1"); fader.setAttribute("aria-valuemax", String(n)); fader.setAttribute("aria-valuenow", String(S.thin));
+}
+function setThin(v) { v = Math.max(1, Math.min(S.thinMax, Math.round(v))); if (v !== S.thin) { S.thin = v; updateThin(false); } }
+let fdrag = false;
+const thinAt = (e) => { const r = fader.getBoundingClientRect(), x = e.clientX - r.left - 22, wd = r.width - 44; return Math.ceil(Math.max(0.0001, Math.min(1, x / wd)) * S.thinMax); };
+fader.addEventListener("pointerdown", (e) => { fdrag = true; fader.setPointerCapture(e.pointerId); fader.focus(); setThin(thinAt(e)); e.preventDefault(); });
+fader.addEventListener("pointermove", (e) => { if (fdrag) setThin(thinAt(e)); });
+fader.addEventListener("pointerup", () => { fdrag = false; });
+fader.addEventListener("pointercancel", () => { fdrag = false; });
+fader.addEventListener("wheel", (e) => { e.preventDefault(); setThin(S.thin - Math.sign(e.deltaY)); }, { passive: false });
+fader.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight" || e.key === "ArrowUp") { setThin(S.thin + 1); e.preventDefault(); }
+  if (e.key === "ArrowLeft" || e.key === "ArrowDown") { setThin(S.thin - 1); e.preventDefault(); }
+  if (e.key === "Home") { setThin(1); e.preventDefault(); }
+  if (e.key === "End") { setThin(S.thinMax); e.preventDefault(); }
+});
+
+/* ---- the other controls ---- */
+const pm = $("playmode");
+const paintPlay = () => pm.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", Number(b.dataset.v) === S.play ? "true" : "false"));
+pm.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; S.play = Number(b.dataset.v); paintPlay(); post({ type: "set", id: 3, v: S.play }); });
+paintPlay();
+$("mode").addEventListener("click", (e) => { const b = e.target.closest(".mk"); if (!b) return; S.mode = Number(b.dataset.v); paintMode(); updateThin(false); });   // (updateThin repaints the fader in the new colour)
+$("trans").addEventListener("change", (e) => { S.trans = e.target.checked; post({ type: "set", id: 6, v: S.trans ? 1 : 0 }); paintMode(); updateThin(false); });
+$("vol").addEventListener("input", (e) => { if (gain) gain.gain.value = Number(e.target.value); });
+$("play").addEventListener("click", () => {
+  if ($("play").getAttribute("aria-pressed") === "true") stop();
+  else { S.slice = null; trig(S.s, S.e, false); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.code !== "Space" || e.target.closest("input, button, [role=slider]")) return;
+  e.preventDefault(); $("play").click();
+});
+$("zoomauto").addEventListener("click", () => { S.zoom.auto = true; S.zoom.hold = 0; $("zoomauto").setAttribute("aria-pressed", "true"); });
+$("zoomview").addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const Z = S.zoom;
+  Z.auto = false; $("zoomauto").setAttribute("aria-pressed", "false");
+  Z.span = Math.min(S.n, Math.max(256, (Z.span || 4800) * (e.deltaY > 0 ? 1.15 : 1 / 1.15)));
+}, { passive: false });
+$("zoomview").addEventListener("dblclick", () => $("zoomauto").click());
+/* nothing playing: drag the zoomed view along the sample */
+let zdrag = null;
+$("zoom").addEventListener("pointerdown", (e) => {
+  if (!S.n || (S.live && S.live.playing)) return;
+  const at = S.zoom.at != null ? S.zoom.at : (S.slice ? S.slice[0] : S.s);
+  zdrag = { x: e.clientX, at };
+  $("zoom").setPointerCapture(e.pointerId);
+  $("zoom").style.cursor = "grabbing";
+});
+$("zoom").addEventListener("pointermove", (e) => {
+  if (!zdrag) { $("zoom").style.cursor = S.live && S.live.playing ? "" : "grab"; return; }
+  const per = (S.zoom.span || 1536) / $("zoom").getBoundingClientRect().width;
+  S.zoom.at = ((Math.round(zdrag.at - (e.clientX - zdrag.x) * per) % S.n) + S.n) % S.n;
+});
+const zend = () => { zdrag = null; $("zoom").style.cursor = "grab"; };
+$("zoom").addEventListener("pointerup", zend); $("zoom").addEventListener("pointercancel", zend);
+
+/* the slice holding frame f in the cuts now (with no transients, from f to the end) */
+function sliceAt(f) {
+  const cuts = S.trans && S.cuts.length > 1 ? S.cuts : null;
+  if (!cuts) return [f, S.n];
+  let i = cuts.length - 1;
+  while (i > 0 && cuts[i] > f) i--;
+  return [cuts[i], i + 1 < cuts.length ? cuts[i + 1] : S.n];
+}
+
+/* the sample view: click a slice to play it; drag the region's edges */
+let edgeDrag = null;
+const nearEdge = (x, width) => (S.slice || !S.n ? null : Math.abs((S.s / S.n) * width - x) < 8 ? "s" : Math.abs((S.e / S.n) * width - x) < 8 ? "e" : null);
+wave.addEventListener("pointerdown", (e) => {
+  if (!S.n) return;
+  const rect = wave.getBoundingClientRect(), x = e.clientX - rect.left, f = Math.round((x / rect.width) * S.n);
+  edgeDrag = nearEdge(x, rect.width);
+  if (edgeDrag) { wave.setPointerCapture(e.pointerId); return; }
+  S.pick = f;
+  S.slice = sliceAt(f);
+  S.zoom.at = null;
+  trig(S.slice[0], S.slice[1], true);
+});
+wave.addEventListener("pointermove", (e) => {
+  const rect = wave.getBoundingClientRect(), x = e.clientX - rect.left;
+  if (!edgeDrag) { wave.style.cursor = nearEdge(x, rect.width) ? "ew-resize" : "crosshair"; return; }
+  const f = Math.max(0, Math.min(S.n, Math.round((x / rect.width) * S.n)));
+  if (edgeDrag === "s") S.s = Math.min(f, S.e - 64); else S.e = Math.max(f, S.s + 64);
+  post({ type: "region", s: S.s, e: S.e });
+});
+const endEdge = () => { edgeDrag = null; };
+wave.addEventListener("pointerup", endEdge); wave.addEventListener("pointercancel", endEdge);
+
+/* the samples: the demo, then whatever is opened (a folder, files, a drop), by folder; one plays at a time */
+const LIB = [{ name: "Demo loop (synthesized)", path: "demo", cat: "Example", demo: true }];
+let libCur = 0, libLoading = 0;
+function renderLib() {
+  const el = $("libl");
+  let html = "", cat = null;
+  LIB.forEach((en, i) => {
+    if (en.cat !== cat) { cat = en.cat; html += `<div class="grp">${cat.replace(/[<&]/g, "")}</div>`; }
+    html += `<button type="button" data-i="${i}" aria-current="${i === libCur}" title="${en.path.replace(/["<&]/g, "")}">${en.name.replace(/[<&]/g, "")}</button>`;
+  });
+  el.innerHTML = html;
+  el.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest" });
+}
+async function openEntry(i) {
+  if (i < 0 || i >= LIB.length) return;
+  const en = LIB[i], ticket = ++libLoading;
+  libCur = i;
+  renderLib();
+  if (en.demo) { const d = demoLoop(); setSample(d.l, d.r, d.n, en.name); return; }
+  $("file").textContent = `Analysing ${en.name}…`;
+  try {
+    const data = await en.file.arrayBuffer();
+    const off = new OfflineAudioContext(1, 1, SR);   // (decodes at 48 kHz, as the unit converts on import)
+    const ab = await off.decodeAudioData(data);
+    if (ticket !== libLoading) return;   // (another was picked meanwhile)
+    const l = ab.getChannelData(0), r = ab.numberOfChannels > 1 ? ab.getChannelData(1) : null;
+    await new Promise((res) => setTimeout(res, 20));
+    setSample(l, r, ab.length, en.name);
+  } catch (err) {
+    $("file").textContent = `Couldn't read ${en.name}: try a WAV, AIFF or FLAC file.`;
+  }
+}
+function addFiles(list) {
+  const seen = new Set(LIB.map((f) => f.path)), before = LIB.length;
+  for (const f of list) {
+    if (!/\.(wav|aif|aiff|flac|mp3|ogg)$/i.test(f.name)) continue;
+    const path = f.webkitRelativePath || f.name;
+    if (seen.has(path)) continue;
+    seen.add(path);
+    const parts = path.split("/");
+    LIB.push({ name: f.name, path, cat: parts.length > 1 ? parts[parts.length - 2] : "Files", file: f });
+  }
+  if (LIB.length === before) return;
+  const cur = LIB[libCur];
+  LIB.sort((a, b) => (b.demo ? 1 : 0) - (a.demo ? 1 : 0) || a.cat.localeCompare(b.cat) || a.name.localeCompare(b.name, undefined, { numeric: true }));
+  libCur = LIB.indexOf(cur);
+  if (cur.demo) openEntry(LIB.findIndex((x) => !x.demo)); else renderLib();
+}
+$("libl").addEventListener("click", (e) => { const b = e.target.closest("button[data-i]"); if (b) openEntry(Number(b.dataset.i)); });
+$("loaddir").addEventListener("click", () => $("pickdir").click());
+$("load").addEventListener("click", () => $("pick").click());
+$("pickdir").addEventListener("change", (e) => { addFiles(e.target.files); e.target.value = ""; });
+$("pick").addEventListener("change", (e) => { addFiles(e.target.files); e.target.value = ""; });
+const drop = $("drop");
+document.addEventListener("dragover", (e) => { e.preventDefault(); drop.hidden = false; });
+document.addEventListener("dragleave", (e) => { if (!e.relatedTarget) drop.hidden = true; });
+document.addEventListener("drop", (e) => { e.preventDefault(); drop.hidden = true; if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files); });
+document.addEventListener("keydown", (e) => {   // (↑ ↓ through the samples, unless a control has the keys)
+  if ((e.key !== "ArrowDown" && e.key !== "ArrowUp") || e.target.closest("input, [role=slider]")) return;
+  e.preventDefault();
+  openEntry(libCur + (e.key === "ArrowDown" ? 1 : -1));
+});
+$("smooth").addEventListener("input", (e) => setSmoothing(Number(e.target.value)));
+$("smooth").addEventListener("dblclick", () => setSmoothing(POS_DEF));
+$("zc").addEventListener("input", (e) => setSnap(Number(e.target.value)));
+$("zc").addEventListener("dblclick", () => setSnap(ZC_DEF));
+window.addEventListener("resize", () => drawWaveBase());
+
+paintMode();
+setSnap(ZC_DEF);
+setSmoothing(POS_DEF);
+renderLib();
+openEntry(0);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
