@@ -1,4 +1,4 @@
-# keyframer-lab
+# Keyframe Lab
 
 The keyframe time stretcher from the Digitakt II keyframer mod, with its TKEO transient detector, running live in
 the browser: **https://heavylight-industries.github.io/keyframer-lab/**
