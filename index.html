@@ -160,13 +160,13 @@ button, input { font: inherit; color: inherit; }
 .sval { font: 700 14px/1 var(--f-mono); color: var(--text); min-width: 15ch; text-align: right; }
 .deck { display: grid; grid-template-columns: minmax(0, 470px) minmax(0, 1fr); gap: 14px; align-items: stretch; }
 .box { background: var(--well); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--bevel); }
-.deck > .box, .box.lib { position: relative; border-color: var(--well-lo);
+.deck > .box, .box.lib, .plate, .lib { position: relative; border: 1px solid var(--well-lo);
   background:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>") 0 0 / 180px 180px,
     linear-gradient(180deg, var(--well-hi), var(--well) 42%, var(--well-lo));
   background-blend-mode: soft-light, normal;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -2px 6px rgba(0, 0, 0, 0.25), 0 10px 26px rgba(0, 0, 0, 0.45); }
-.deck > .box::before, .box.lib::before { content: ""; position: absolute; inset: -4px; border-radius: 20px; padding: 2px; pointer-events: none;
+.deck > .box::before, .box.lib::before, .plate::before { content: ""; position: absolute; inset: -4px; border-radius: 20px; padding: 2px; pointer-events: none;
   background: linear-gradient(160deg, var(--trim-a), var(--trim-b) 28%, var(--trim-a) 52%, var(--trim-b) 78%, var(--trim-a));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
@@ -260,29 +260,90 @@ button, input { font: inherit; color: inherit; }
   .brand h1 { font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ---- the bench instrument (the redesign): a header strip, the screens full width, the samples in a drawer, one
+   faceplate of three engraved modules, the MIDI and how-to folded away ---- */
+.bar { flex-wrap: nowrap; gap: 10px 12px; padding: 9px 12px; border-radius: 14px; border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--well-hi), var(--well-lo)); box-shadow: var(--bevel); }
+.brand { margin-right: 0; }
+.brand h1 { font-size: 22px; }
+.brand span { font-size: 10px; }
+.samplebtn { display: inline-flex; align-items: baseline; gap: 9px; flex: 1 1 auto; min-width: 120px; margin-right: 4px; overflow: hidden; padding: 8px 14px; cursor: pointer;
+  border-radius: 9px; background: var(--inset-bg); border: 1px solid var(--inset-line); box-shadow: var(--inset-shadow); color: var(--text); }
+.samplebtn .sbk { font: 700 10px/1 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; color: var(--faint); }
+.samplebtn .file { flex: 1 1 auto; min-width: 0; max-width: none; color: var(--text); }
+.bar .btn { flex: none; }
+@media (max-width: 1250px) { .brand span { display: none; } }
+@media (max-width: 900px) { .bar { flex-wrap: wrap; } }
+.samplebtn .caret { color: var(--faint); font-size: 12px; }
+.btn.go { min-width: 118px; border-radius: 999px; padding: 10px 26px; font-size: 14px; }
+.how > summary, .conn-wrap > summary { cursor: pointer; list-style: none; width: max-content; font: 700 12px/1 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
+.how > summary::-webkit-details-marker, .conn-wrap > summary::-webkit-details-marker { display: none; }
+.how > summary::before, .conn-wrap > summary::before { content: "▸  "; color: var(--faint); }
+.how[open] > summary::before, .conn-wrap[open] > summary::before { content: "▾  "; }
+.how .note { margin-top: 10px; }
+.screens { display: grid; gap: 14px; min-width: 0; }
+/* the samples drawer */
+.lib { position: fixed; z-index: 30; inset: 0 auto 0 0; width: min(330px, 86vw); transform: translateX(-104%); transition: transform 0.22s ease;
+  contain: none; border-radius: 0 16px 16px 0; padding: 18px 12px max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
+body[data-lib="open"] .lib { transform: none; }
+body[data-lib="open"]::after { content: ""; position: fixed; inset: 0; z-index: 25; background: rgba(5, 7, 10, 0.5); }
+.libhead { display: flex; align-items: center; justify-content: space-between; }
+.libx { background: none; border: 0; color: var(--dim); font-size: 24px; line-height: 1; cursor: pointer; padding: 0 4px; }
+/* the faceplate */
+.plate { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.25fr) minmax(0, 0.95fr); position: relative; border-radius: 18px; }
+.mod { display: grid; gap: 14px; align-content: start; padding: 16px 18px 18px; min-width: 0; }
+.mod + .mod { border-left: 1px solid var(--line); box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.035); }
+.eng { margin: 0; display: flex; align-items: center; gap: 12px; font: 700 12px/1 var(--f-display); letter-spacing: 0.32em; text-transform: uppercase; color: var(--title); }
+.eng::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+.mod-engine .knobs { background: none; border: 0; box-shadow: none; padding: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mod-engine .knobs::before { display: none; }
+.mod-engine .knob:nth-child(2) { margin-top: 0; }
+.mod-engine .knob svg { width: 112px; }
+.mod-engine .knob .lbl { font-size: 19px; }
+.mod-det .modes { gap: 8px; }
+.mod-det .mk { padding: 10px 12px 9px; }
+.mod-det .mk b { font-size: 19px; }
+.mod-det .mk span { font-size: 12px; }
+.mod-play .row { flex-direction: column; align-items: stretch; gap: 10px; }
+.mod-play .seg { display: grid; grid-template-columns: 1fr 1fr; }
+.mod-play .seg button { border-bottom: 1px solid var(--track); }
+.mod-play .seg button:nth-child(2n) { border-right: 0; }
+.mod-play .seg button:nth-child(n + 3) { border-bottom: 0; }
+.mod-play .sboxes { grid-template-columns: 1fr; }
+.mod-play .sbox .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sbox .stats b, .sbox .stats strong { text-shadow: 0 0 8px rgba(237, 230, 216, 0.22); }
+.conn-wrap { padding: 14px 16px; }
+.conn-wrap[open] > summary { margin-bottom: 12px; }
+@media (max-width: 1000px) {
+  .plate { grid-template-columns: 1fr; }
+  .mod + .mod { border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (max-width: 640px) { .cpu { display: none; } .brand span { display: none; } .samplebtn .file { max-width: 18ch; } }
 </style>
 
 <div class="app" id="app">
   <header class="bar">
-    <div class="brand"><h1>Keyframer Lab</h1><span>Digitakt II ONESHOT+ engine, in your browser</span></div>
-    <span class="file" id="file">Demo loop (synthesized)</span>
+    <div class="brand"><h1>Keyframer Lab</h1><span>Digitakt II ONESHOT+ engine</span></div>
+    <button class="samplebtn" id="libbtn" type="button" aria-expanded="false" aria-controls="lib"><span class="sbk">Sample</span><span class="file" id="file">Demo loop (synthesized)</span><span class="caret" aria-hidden="true">▾</span></button>
     <span class="cpu" id="cpu" title="The engine's render time against the audio it made (the audio thread); the page's drawing against each frame">audio – · drawing –</span>
     <input type="file" id="pickdir" webkitdirectory multiple hidden>
     <input type="file" id="pick" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.ogg" multiple hidden>
-    <button class="btn" id="loaddir" type="button">Open folder</button>
-    <button class="btn" id="load" type="button">Open files</button>
-    <button class="btn go" id="play" type="button" aria-pressed="false">Play</button>
+    <button class="btn" id="loaddir" type="button">Folder</button>
+    <button class="btn" id="load" type="button">Files</button>
     <button class="btn" id="theme" type="button" aria-label="Light or dark">Light</button>
+    <button class="btn go" id="play" type="button" aria-pressed="false">Play</button>
   </header>
+  <details class="how"><summary>How to read it</summary>
   <p class="note" id="note">The <b class="k-ref">reference</b> walks through the sample at STR's rate; the <b class="k-play">play head</b> reads it at TUNE's rate.
     When the play head drifts more than K <b class="k-kf">keyframes</b> (the sample's peaks and troughs) from the reference, it crossfades back to it: a splice, drawn as an arc above the sample.
-    <b>Transients</b> are borders: the play head waits before one until the reference crosses it, so every hit plays once. Click a slice to play it; drag the region's edges.</p>
+    <b>Transients</b> are borders: the play head waits before one until the reference crosses it, so every hit plays once. Click a slice to play it; drag the region's edges.</p></details>
   <p class="warn" id="warn" hidden></p>
 
-  <div class="stage">
-  <aside class="box lib" aria-label="Samples"><span class="cap">Samples</span><div class="libl" id="libl"></div>
+  <aside class="lib" id="lib" aria-label="Samples"><div class="libhead"><span class="cap">Samples</span><button class="libx" id="libx" type="button" aria-label="Close">×</button></div><div class="libl" id="libl"></div>
     <p class="libhint">Open a folder or drop files; ↑ ↓ step through them.</p></aside>
-  <div class="views">
+
+  <div class="screens">
   <div class="view" id="waveview">
     <canvas id="wave"></canvas>
     <span class="tag">Splices · sample</span><span class="read" id="waveread"></span>
@@ -294,31 +355,21 @@ button, input { font: inherit; color: inherit; }
     <div class="zoomctl"><span class="legend" aria-label="Legend"><span><i class="fl" style="--c: var(--rose-0)"></i>Ref</span><span><i class="fl" style="--c: var(--powder-0)"></i>Play</span><span><i class="fl" style="--c: var(--cream-1)"></i>Xfade</span><span><i class="fl" style="--c: var(--rust-0)"></i>Splice at K</span></span><span id="zoomms"></span><button type="button" id="zoomauto" aria-pressed="true">Auto zoom</button></div>
   </div>
   </div>
-  </div>
 
-  <section class="deck" aria-label="Controls">
+  <section class="plate" aria-label="Controls">
+    <div class="mod mod-engine"><h2 class="eng">Engine</h2>
     <div class="box knobs" id="knobs">
       <div class="lockrow"><button class="lock" id="lock" type="button" aria-pressed="false">Lock STR + TUNE</button><span class="lockval" id="lockval"></span></div>
       <p class="hint" id="knobhint">Drag up or down; double-click resets. STR is finer near freeze (half a turn 1×, the end 4×); TUNE glides, Shift for semitones; SIZE gives the large K more of its turn. Shift is fine on STR and SIZE.</p>
     </div>
-    <div class="box side">
-      <div class="row"><span class="cap">Play</span>
-        <div class="seg" id="playmode" role="group" aria-label="PLAY mode">
-          <button type="button" data-v="0">◀ Once</button><button type="button" data-v="1">◀ Loop</button>
-          <button type="button" data-v="2">Loop ▶</button><button type="button" data-v="3">Once ▶</button>
-        </div>
-        <label class="switch"><input type="checkbox" id="trans" checked> Transients</label>
-      </div>
+    </div>
+    <div class="mod mod-det"><h2 class="eng">Detector</h2>
       <div class="modes" id="mode" data-cc="mode" role="group" aria-label="TR.DET mode">
         <button class="mk" type="button" data-v="1"><b>Vol</b><span>The loudest hits first</span></button>
         <button class="mk" type="button" data-v="2"><b>Grid</b><span>Even steps, each moved to the nearest transient</span></button>
         <button class="mk" type="button" data-v="3"><b>Rand</b><span>A random pick of the transients</span></button>
       </div>
       <div class="lvl"><span class="cap">Smoothing</span><input type="range" id="smooth" data-cc="smooth" min="0" max="1" step="0.001" aria-label="TKEO smoothing: the detector's follower cutoff"><span class="sval" id="smoothval"></span></div>
-      <div class="sboxes">
-        <div class="sbox"><span class="cap">Splices</span><div class="stats" id="stats-a"></div></div>
-        <div class="sbox"><span class="cap">Keyframes and transients</span><div class="stats" id="stats-b"></div></div>
-      </div>
       <div class="fader">
         <div class="fhead"><span class="cap">Thin</span><span class="fval" id="thinval"></span></div>
         <div class="ftrack" id="thin" data-cc="thin" tabindex="0" role="slider" aria-label="THIN: transients kept">
@@ -335,11 +386,25 @@ button, input { font: inherit; color: inherit; }
         </div>
         <div class="fends"><span>1</span><span id="lenmax"></span></div>
       </div>
+    </div>
+    <div class="mod mod-play"><h2 class="eng">Playback</h2>
+      <div class="row"><span class="cap">Direction</span>
+        <div class="seg" id="playmode" role="group" aria-label="PLAY mode">
+          <button type="button" data-v="0">◀ Once</button><button type="button" data-v="1">◀ Loop</button>
+          <button type="button" data-v="2">Loop ▶</button><button type="button" data-v="3">Once ▶</button>
+        </div>
+        <label class="switch"><input type="checkbox" id="trans" checked> Transients</label>
+      </div>
       <div class="lvl"><span class="cap">Level</span><input type="range" id="vol" data-cc="vol" min="0" max="1" step="0.01" value="0.7" aria-label="Output level"></div>
+      <div class="sboxes">
+        <div class="sbox"><span class="cap">Splices</span><div class="stats" id="stats-a"></div></div>
+        <div class="sbox"><span class="cap">Keyframes and transients</span><div class="stats" id="stats-b"></div></div>
+      </div>
     </div>
   </section>
 
-  <section class="box conn" aria-label="MIDI and routing">
+  <details class="box conn-wrap"><summary>MIDI and your DAW</summary>
+  <section class="conn" aria-label="MIDI and routing">
     <div class="conncol">
       <span class="cap">MIDI</span>
       <div class="row"><button class="btn" id="midion" type="button">Connect MIDI</button>
@@ -376,6 +441,7 @@ button, input { font: inherit; color: inherit; }
       <p class="cstat">MIDI and the output choice need Chrome or Edge (Firefox asks before MIDI; Safari has neither).</p>
     </div>
   </section>
+  </details>
   <p class="foot">The engine is the unit's own C (kf/kf.c, kf/tkeo.c) compiled to WebAssembly, with no changes to its arithmetic, so every number matches the Digitakt's.
     Samples play at 48 kHz in 32-sample blocks, one engine per channel, as on the unit. STR's knob here is curved for finer control near freeze; the unit's is linear. Keys: Space plays and stops.</p>
 </div>
@@ -1472,6 +1538,13 @@ function applyTheme(t) {
   $("theme").textContent = t === "light" ? "Dark" : "Light";
 }
 applyTheme(store.get("kflab.theme", window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+/* the samples drawer: the header's sample button opens it; the ×, Escape or a click outside close it (picks keep
+   it open, to browse) */
+function setLib(open) { document.body.dataset.lib = open ? "open" : ""; $("libbtn").setAttribute("aria-expanded", String(open)); }
+$("libbtn").addEventListener("click", () => setLib(document.body.dataset.lib !== "open"));
+$("libx").addEventListener("click", () => setLib(false));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") setLib(false); });
+document.addEventListener("click", (e) => { if (document.body.dataset.lib === "open" && !e.target.closest("#lib, #libbtn")) setLib(false); });
 $("theme").addEventListener("click", () => {
   const t = document.documentElement.dataset.theme === "light" ? "dark" : "light";
   applyTheme(t);
