@@ -1061,7 +1061,7 @@ function drawWave() {
     head(v.ref, P.rose[0], 2, false);
     head(v.play, P.powder[0], 2, false);
     const pre = S.r ? (c ? "R " : "L ") : "";
-    headTags(g, [[xr, P.rose[0], pre + "REF"], [xp, P.powder[0], pre + "PLAY"]], y1 - 14 * d, d, w);
+    headTags(g, [[xr, P.rose[0], pre + "REF"], [xp, P.powder[0], pre + "PLAY"]], y1 - 14 * d, d, w, -10 * d);
   });
   $("waveread").textContent = `region ${(rs / SR).toFixed(3)}–${(re / SR).toFixed(3)} s` + (S.slice ? " · slice" : "");
 }
@@ -1082,7 +1082,8 @@ function zoomSpan(dist, playing) {
 }
 
 /* the heads' flags (REF, PLAY, XFADE, SPLICE AT K: the legend names them by colour): a small bevelled swallowtail on
-   each pole, stacked where they meet; one flips left at the right edge */
+   each pole, each kind at its own height (REF, PLAY, XFADE, SPLICE AT K, a row apart), so none jumps as another passes;
+   one flips left at the right edge */
 function flag(g, x, y, col, d, left) {
   const fw = 12 * d, fh = 9 * d, s = left ? -1 : 1, tip = x + s * fw, notch = x + s * (fw - 3.5 * d);
   g.beginPath(); g.moveTo(x, y); g.lineTo(tip, y); g.lineTo(notch, y + fh / 2); g.lineTo(tip, y + fh); g.lineTo(x, y + fh); g.closePath();
@@ -1091,14 +1092,10 @@ function flag(g, x, y, col, d, left) {
   g.strokeStyle = "rgba(255, 255, 255, 0.55)"; g.beginPath(); g.moveTo(x, y + 0.5 * d); g.lineTo(tip - s * 0.8 * d, y + 0.5 * d); g.stroke();
   g.strokeStyle = "rgba(0, 0, 0, 0.5)"; g.beginPath(); g.moveTo(x, y + fh - 0.5 * d); g.lineTo(tip - s * 0.8 * d, y + fh - 0.5 * d); g.stroke();
 }
-function headTags(g, tags, y, d, w) {
-  tags.sort((p, q) => p[0] - q[0]);
-  let px = -1e9, level = 0;
-  for (const [x, col] of tags) {
-    level = x - px < 14 * d ? level + 1 : 0;
-    flag(g, x, y - 4.5 * d + level * 11 * d, col, d, x + 13 * d > w);
-    px = x;
-  }
+const FLAG_ROW = { REF: 0, PLAY: 1, XFADE: 2, "SPLICE AT K": 3 };
+function headTags(g, tags, y, d, w, step) {   // (step: a row's offset, down the zoomed view, up the sample view's lanes)
+  for (const [x, col, label] of tags)
+    flag(g, x, y - 4.5 * d + (FLAG_ROW[label.replace(/^[LR] /, "")] || 0) * step, col, d, x + 13 * d > w);
 }
 
 function drawZoom() {
@@ -1246,7 +1243,7 @@ function drawZoom() {
     head(fx(v.ref), P.rose[0], 2, false);
     head(fx(v.play), P.powder[0], 2, false);
     const pre = nv > 1 ? (c ? "R " : "L ") : "";
-    headTags(g, [[fx(v.ref), P.rose[0], pre + "REF"], [fx(v.play), P.powder[0], pre + "PLAY"]].concat(v.splicing ? [[fx(v.temp), P.cream[1], "XFADE"]] : [], reach != null && inView(reach) ? [[fx(reach), P.rust[0], "SPLICE AT K"]] : []), r0 + 12 * d, d, w);
+    headTags(g, [[fx(v.ref), P.rose[0], pre + "REF"], [fx(v.play), P.powder[0], pre + "PLAY"]].concat(v.splicing ? [[fx(v.temp), P.cream[1], "XFADE"]] : [], reach != null && inView(reach) ? [[fx(reach), P.rust[0], "SPLICE AT K"]] : []), r0 + 12 * d, d, w, 10 * d);
     reads.push(`${nv > 1 ? (c ? "R " : "L ") : ""}${between} of K ${m.leash}${v.splicing ? " · xfade" : ""}`);
   }
   $("zoomread").textContent = playing ? `${reads.join(" · ")} keyframes between the heads (shaded)` : "press Play, or click a slice";
