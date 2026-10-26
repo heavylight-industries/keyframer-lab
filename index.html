@@ -181,6 +181,18 @@ button, input { font: inherit; color: inherit; }
 .lock { background: var(--raised); border: 1px solid var(--track); border-radius: 999px; padding: 7px 16px; cursor: pointer; box-shadow: var(--bevel);
   font: 700 12px/1.2 var(--f-display); letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); }
 .lock[aria-pressed="true"] { background: var(--cream); border-color: var(--cream); color: var(--on-light); }
+/* the STR / TUNE lock: a three-way slide switch (left, TUNE follows STR; middle, off; right, STR follows TUNE) */
+.tri { position: relative; display: inline-grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 3px; border-radius: 999px;
+  background: var(--inset-bg); border: 1px solid var(--inset-line); box-shadow: var(--inset-shadow); }
+.tri button { position: relative; z-index: 1; background: none; border: 0; padding: 7px 14px; cursor: pointer; white-space: nowrap;
+  font: 700 11px/1.2 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); transition: color 0.18s; }
+.tri button[aria-checked="true"] { color: var(--on-light); }
+.tri-thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / 3); border-radius: 999px;
+  background: linear-gradient(180deg, #fbf6ea, var(--cream) 55%, #d9cfba); box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transform: translateX(calc(var(--i, 1) * 100%)); transition: transform 0.2s cubic-bezier(0.3, 1.3, 0.5, 1); }
+.tri[data-i="0"] .tri-thumb { --i: 0; } .tri[data-i="1"] .tri-thumb { --i: 1; } .tri[data-i="2"] .tri-thumb { --i: 2; }
+.tri[data-i="1"] .tri-thumb { background: linear-gradient(180deg, #5b6878, #3d4752); box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+.tri[data-i="1"] button[aria-checked="true"] { color: var(--text); }
 .lockval { font: 400 13px/1.3 var(--f-mono); color: var(--dim); }
 .hint { grid-column: 1 / -1; margin: 12px 6px 0; font-size: 13px; line-height: 1.45; color: var(--faint); }
 .side { display: grid; gap: 14px; align-content: start; padding: 14px 16px 16px; min-width: 0; }
@@ -359,7 +371,11 @@ body[data-lib="open"]::after { content: ""; position: fixed; inset: 0; z-index: 
   <section class="plate" aria-label="Controls">
     <div class="mod mod-engine"><h2 class="eng">Engine</h2>
     <div class="box knobs" id="knobs">
-      <div class="lockrow"><button class="lock" id="lock" type="button" aria-pressed="false">Lock STR + TUNE</button><span class="lockval" id="lockval"></span></div>
+      <div class="lockrow"><div class="tri" id="lock" role="radiogroup" aria-label="STR and TUNE lock" data-i="1">
+          <button type="button" role="radio" data-v="tune" aria-checked="false" title="TUNE follows STR: turning STR takes TUNE along">Tune follows</button>
+          <button type="button" role="radio" data-v="off" aria-checked="true">Off</button>
+          <button type="button" role="radio" data-v="str" aria-checked="false" title="STR follows TUNE: turning TUNE takes STR along">Str follows</button>
+          <i class="tri-thumb" aria-hidden="true"></i></div><span class="lockval" id="lockval"></span></div>
       <p class="hint" id="knobhint">Drag up or down; double-click resets. STR is finer near freeze (half a turn 1×, the end 4×); TUNE glides, Shift for semitones; SIZE gives the large K more of its turn. Shift is fine on STR and SIZE.</p>
     </div>
     </div>
@@ -1281,35 +1297,41 @@ function knob(spec) {
   set(S[spec.key], false);
   return el;
 }
-/* STR and TUNE locked: their ratio held (the play head's rate over the reference's), so turning either takes
-   the other along: the same splices and borders, slower or faster to watch. TUNE within +-60 (the unit's range), STR within +-4x and
-   on its side of freeze; where one would pass its limit, both stop there */
-const LOCK = { on: false, ratio: 1 };
+/* STR and TUNE locked, a three-way switch: "tune", TUNE follows STR (turning STR takes TUNE along at the latched
+   ratio, the play head's rate over the reference's: the same splices and borders, slower or faster to watch); "str",
+   STR follows TUNE; turning the follower by hand latches a new ratio. TUNE within +-60 (the unit's range), STR within
+   +-4x and on its side of freeze; where one would pass its limit, both stop there */
+const LOCK = { mode: "off", ratio: 1 };
 const pitchOf = (t) => 2 ** (t / 12);
 const posOfStr = (st) => Math.sign(st) * Math.sqrt(Math.abs(st) / 4);
+function relatch() { const st = strOf(S.str); if (st !== 0) LOCK.ratio = pitchOf(S.tune) / st; paintLock(); }
 function coupled(key) {
-  if (!LOCK.on) return;
+  if (LOCK.mode === "off") return;
   const ks = KNOBS[0], kt = KNOBS[1];
-  if (key === "str") {
+  if (key === "str" && LOCK.mode === "tune") {
     const st = strOf(S.str), p = LOCK.ratio * st;
     if (!(p > 0)) { ks.set(posOfStr(pitchOf(S.tune) / LOCK.ratio), true, true); return; }   // (not across freeze)
     let t = 12 * Math.log2(p);
     if (t > 60 || t < -60) { t = Math.max(-60, Math.min(60, t)); ks.set(posOfStr(pitchOf(t) / LOCK.ratio), true, true); }
     kt.set(t, true, true);
-  } else if (key === "tune") {
+  } else if (key === "tune" && LOCK.mode === "str") {
     let st = pitchOf(S.tune) / LOCK.ratio;
     if (Math.abs(st) > 4) { st = Math.sign(st) * 4; kt.set(12 * Math.log2(LOCK.ratio * st), true, true); }
     ks.set(posOfStr(st), true, true);
-  }
+  } else relatch();   // (the follower turned by hand: a new ratio)
 }
 function paintLock() {
-  $("lock").setAttribute("aria-pressed", LOCK.on ? "true" : "false");
-  $("lockval").textContent = LOCK.on ? `play head ${LOCK.ratio.toFixed(2)}× the reference` : "";
+  const i = { tune: 0, off: 1, str: 2 }[LOCK.mode];
+  $("lock").dataset.i = String(i);
+  for (const b of $("lock").querySelectorAll("button")) b.setAttribute("aria-checked", b.dataset.v === LOCK.mode ? "true" : "false");
+  $("lockval").textContent = LOCK.mode === "off" ? "" : `play head ${LOCK.ratio.toFixed(2)}× the reference`;
 }
-$("lock").addEventListener("click", () => {
-  if (!LOCK.on && strOf(S.str) === 0) { $("lockval").textContent = "STR is at freeze: move it first"; return; }
-  LOCK.on = !LOCK.on;
-  if (LOCK.on) LOCK.ratio = pitchOf(S.tune) / strOf(S.str);
+$("lock").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.v !== "off" && strOf(S.str) === 0) { $("lockval").textContent = "STR is at freeze: move it first"; return; }
+  LOCK.mode = b.dataset.v;
+  if (LOCK.mode !== "off") LOCK.ratio = pitchOf(S.tune) / strOf(S.str);
   paintLock();
 });
 for (const k of KNOBS) $("knobs").insertBefore(knob(k), $("knobs").querySelector(".lockrow"));
