@@ -15,7 +15,8 @@ samples. Everything runs in the page; nothing is uploaded.
 - **Zoomed in**: the heads up close, with the keyframes (the sample's peaks and troughs) between them. When more
   than K of them lie between the heads, the play head splices. Drag it to look around while nothing plays.
 - **The detector**: VOL (the loudest hits), GRID (even steps, each moved to the nearest transient) or RAND, THIN
-  (how many transients the engine keeps as borders) and Smoothing (the TKEO follower's cutoff).
+  (how many transients the engine keeps as borders), LEN (how many slices a clicked slice or a pad plays, as the
+  Digitakt's SLICE machine) and Smoothing (the TKEO follower's cutoff).
 - **PLAY**: forwards or backwards (the play head's direction: the grains), once or looped. The song's direction is
   STR's sign, as on the unit.
 - **Keyframes**: the analyzer keeps a peak or trough only when it differs from the last keyframe by more than 0.01
