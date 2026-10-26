@@ -74,7 +74,7 @@ The engine files come from the keyframer mod's tree; changes to the engine are m
 ## How it was made
 
 [docs/conversation.md](docs/conversation.md) is the conversation in which it was built, from the first brief to
-this repo: the owner's notes and Claude's replies, without the tool output.
+this repo: heavylight's notes and Claude's replies, without the tool output.
 
 ## License
 
