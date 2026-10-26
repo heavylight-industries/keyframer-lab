@@ -5,9 +5,10 @@
  *   sh tools/build_kfweb.sh        (KF=dir: another checkout's kf/ sources, e.g. ../dt2-keyframer-elemod/kf)
  *
  * kf/kf.c and kf/tkeo.c are included unchanged (as kfborder.c does), the splice hook logging each of the left
- * voice's splices for the picture. The glue follows kf/sharc/dt2.c's ONESHOT path: STR's stretch (4 q, linear),
- * TUNE in semitones through kf_exp2, SIZE's K through kf_size_k, PLAY's four modes (reverse turns both rates
- * round), a play-once note silent past its edge (kf_edge), its end fade, the retrigger's declick, and the
+ * voice's splices for the picture. The glue follows kf/sharc/dt2.c's ONESHOT path (KF58 on): STR's stretch (4 q,
+ * linear; its sign the song's direction), TUNE in semitones through kf_exp2, SIZE's K through kf_size_k, PLAY's
+ * four modes (reverse turns the play head alone; dt2.c's slip, the catch-up of a song turned back, is not here), a
+ * play-once note silent past its edge (kf_edge), its end fade, the retrigger's declick, and the
  * transients THIN keeps (tk_cache_cuts in the grid's mode, as WERP+'s thin) as the engine's borders. Every
  * number is the C's: no fused multiply-adds (wasm32 has none; the host build -ffp-contract=off).
  *
@@ -202,7 +203,8 @@ void kw_trace(const tk_state *s)
     if (s->i % KW_DEC == 0 || e > env[b]) env[b] = e;
 }
 
-/* the rates and the leash from the controls (dt2.c kf_controls) */
+/* the rates and the leash from the controls (dt2.c kf_controls): STR's sign the song's direction, PLAY's reverse
+   the play head's alone */
 static void derive(void)
 {
     const float dir = (c_play <= 1) ? -1.0f : 1.0f;
@@ -210,7 +212,7 @@ static void derive(void)
     float h = c_size * 256.0f;
     if (q > 1.0f) q = 1.0f;
     if (q < -1.0f) q = -1.0f;
-    stretch = 4.0f * q * dir;
+    stretch = 4.0f * q;
     pitch = kw_exp2(c_tune * (1.0f / 12.0f)) * dir;
     if (h < 0.0f) h = 0.0f;
     leash = kw_size_k((uint32_t)h);

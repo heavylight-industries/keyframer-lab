@@ -15,11 +15,11 @@ samples. Everything runs in the page; nothing is uploaded.
 - **Zoomed in**: the heads up close, with the keyframes (the sample's peaks and troughs) between them. When more
   than K of them lie between the heads, the play head splices. Drag it to look around while nothing plays.
 - **The detector**: VOL (the loudest hits), GRID (even steps, each moved to the nearest transient) or RAND, THIN
-  (how many transients the engine keeps as borders), Smoothing (the TKEO follower's cutoff) and Cut snap (how far a
-  cut may move to a zero crossing).
-- **Keyframes**: the analyzer's threshold. A peak or trough becomes a keyframe only when it differs from the last
-  one by more than this; the unit runs 0.01 of full scale, so quiet passages and the noise floor get few keyframes
-  and the grains adapt to the material.
+  (how many transients the engine keeps as borders) and Smoothing (the TKEO follower's cutoff).
+- **PLAY**: forwards or backwards (the play head's direction: the grains), once or looped. The song's direction is
+  STR's sign, as on the unit.
+- **Keyframes**: the analyzer keeps a peak or trough only when it differs from the last keyframe by more than 0.01
+  of full scale (the unit's), so quiet passages and the noise floor get few keyframes and the grains adapt.
 - **The knobs**: STR (the reference's speed), TUNE (the play head's pitch, ±60 semitones), SIZE (K, the leash).
   Lock STR + TUNE to keep their ratio while slowing everything down to watch.
 
