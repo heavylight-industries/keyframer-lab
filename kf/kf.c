@@ -375,6 +375,11 @@ static void ktfind(kf_voice *v)
         }
         if (k >= 0) { if (v->tp[k] > v->r_s) v->r_ts = v->tp[k]; }
     }
+    /* the attack behind the reference, the other field (the last at or before it, the reference forwards; the first
+       after it, backwards), inside the region: a play head running against the reference borders there (kedge_e,
+       kedge_s; run.asm's block reads the same fields). Never a crossing: the reference runs away from it */
+    if (v->r_tau > 0.0f) { if (lo > 0) { if (v->tp[lo - 1] > v->r_s) v->r_ts = v->tp[lo - 1]; } }
+    if (v->r_tau < 0.0f) { if (lo < v->tn) { if (v->tp[lo] < v->r_e) v->r_te = v->tp[lo]; } }
 }
 
 /* the last transient at or before x (forward), or the first at or after it (backwards: back < 0), inside the
@@ -469,6 +474,21 @@ static void ksplice(kf_voice *v, const kf_params *p, int32_t eps)
         if (p->max_fade > 0) {
             if (d > p->max_fade) d = p->max_fade;
         }
+        {   /* the incoming head starts at the reference and moves at the pitch rate, the reference at the
+               stretch rate: over the fade (len samples of head travel, len / |pitch| out) they part by
+               |pitch - stretch| / |pitch| x len. More than d (the play head running back as the reference runs on:
+               reverse loop) and each splice ended further apart than it began, doubling to the window's edge
+               (Keyframer Lab's trace, 2026-10-25). Capped there (d |pitch| / |pitch - stretch|) the gap only held,
+               and still ran away at other speeds (TUNE -12, +7): the fade at most half that, so a splice ends with
+               the heads half as far apart as it began, as a forward leash splice's do (the owner, 2026-10-26) */
+            const float sa = p->pitch < 0.0f ? -p->pitch : p->pitch;
+            float rel = p->pitch - p->stretch;
+            if (rel < 0.0f) rel = -rel;
+            if (rel > sa) {
+                const float cap = (float)d * sa * krecip(rel) * 0.5f;
+                if ((float)d > cap) d = (int32_t)cap;
+            }
+        }
         if (d < KF_MIN_FADE) d = KF_MIN_FADE;
         len = d;
     }
@@ -518,15 +538,31 @@ static void ksplice(kf_voice *v, const kf_params *p, int32_t eps)
    to it against their rates, multiplied out: no division.) */
 /* the border the play head runs to: a play-once note's edge, or the transient ahead of the reference when
    that is nearer (kf.h: r_te, r_ts) */
+/* A play head running against the reference (PLAY's reversed modes with the song forwards, or the other way round:
+   kf_dt2 flips one head; the owner, 2026-10-26: in reverse loop the play head strayed far from the reference and ran
+   through the transients). It runs back from the reference, so the transient border it reaches is the attack the
+   reference last crossed (behind it: ktfind keeps it in the field the reference's own direction leaves unused), not
+   the one ahead. And in a loop the region's edge is none: the reference wraps at the far end, so a play head held at
+   this one waited a whole lap while the gap grew (border splices come before the leash); past it the reads wrap
+   (kwrap) and the leash brings the head back. Played once, the edge stays (the play head never reads past it).
+   run.asm's block start makes the same borders */
 static int32_t kedge_e(const kf_voice *v, const kf_params *p)
 {
     int32_t e = p->e;   /* (the region's edge, played once or looped: the play head never reads past it) */
+    int32_t against = 0;
+    if (p->pitch > 0.0f) { if (p->stretch < 0.0f) against = 1; }
+    if (v->once & 1) against = 0;
+    if (against) e = 0x7fffffff;
     if (v->r_te < e) e = v->r_te;
     return e;
 }
 static int32_t kedge_s(const kf_voice *v, const kf_params *p)
 {
     int32_t s = p->s;
+    int32_t against = 0;
+    if (p->pitch < 0.0f) { if (p->stretch > 0.0f) against = 1; }
+    if (v->once & 1) against = 0;
+    if (against) s = (int32_t)0x80000000;
     if (v->r_ts > s) s = v->r_ts;
     return s;
 }

@@ -661,6 +661,10 @@ function analyse() {
   S.env = new Float32Array(abuf(), A.kw_env(), Math.ceil(S.n / A.kw_dec())).slice();
   S.envMax = 1e-9;
   for (const v of S.env) if (v > S.envMax) S.envMax = v;
+  // a stereo sample's channels' own traces (their detectors), against the louder channel's highest
+  S.chEnv = S.r ? [0, 1].map((c) => new Float32Array(abuf(), A.kw_chan_env(c), S.env.length).slice()) : null;
+  S.chEnvMax = 1e-9;
+  if (S.chEnv) for (const e of S.chEnv) for (const v of e) if (v > S.chEnvMax) S.chEnvMax = v;
   $("file").textContent = `${S.name} · ${(S.n / SR).toFixed(2)} s · ${S.r ? "stereo" : "mono"} · ${A.kw_ev_count()} peaks`;
 }
 
@@ -819,17 +823,18 @@ function layout(h) {
   return { lane, top, lanes: S.r ? [[top, body / 2], [top + body / 2, body / 2]] : [[top, body]] };
 }
 
-/* the envelope's colour at frame f: its slice's deeper shade (the trace has the lighter), cream with no transients */
-function envCol(f, alpha) {
-  const i = sliceIdx(f);
-  return rgba(i < 0 ? P.cream[1] : sliceFill(i), alpha);
+/* the envelope's colour at frame f: its slice's deeper shade (the trace has the lighter), cream with no transients;
+   with a lane c, that channel's slices' */
+function envCol(f, alpha, c) {
+  const i = c == null ? sliceIdx(f) : laneIdx(c, f);
+  return rgba(i < 0 ? P.cream[1] : c == null ? sliceFill(i) : laneShade(c, i, "fill"), alpha);
 }
 /* the envelope's outline through ys (one point a pixel, at frames fs), a path a run of one colour */
-function envLine(g, ys, fs, lw) {
+function envLine(g, ys, fs, lw, c) {
   let col = null;
   g.lineWidth = lw;
   for (let x = 0; x < ys.length; x++) {
-    const cc = envCol(fs[x], 0.62);
+    const cc = envCol(fs[x], 0.62, c);
     if (cc !== col) { if (col) { g.lineTo(x, ys[x]); g.stroke(); } g.strokeStyle = col = cc; g.beginPath(); g.moveTo(x ? x - 1 : 0, ys[x ? x - 1 : 0]); }
     g.lineTo(x, ys[x]);
   }
@@ -926,18 +931,23 @@ function drawWaveBase() {
       g.fillStyle = rgba(laneShade(c, i, "fill"), S.trans ? 0.08 : 0.03); g.fillRect(a, y0, b - a, lh);
     }
   });
-  // the TKEO envelope, behind (square root, against its highest)
-  const dec = A.kw_dec(), envTop = [], envF = [];
-  for (let x = 0; x < w; x++) {
-    const f = Math.floor((x / w) * S.n), a = Math.floor(f / dec), b = Math.max(a + 1, Math.floor(((x + 1) / w) * S.n / dec));
-    let m = 0;
-    for (let i = a; i < b && i < S.env.length; i++) if (S.env[i] > m) m = S.env[i];
-    const v = Math.sqrt(Math.max(0, m) / S.envMax) * (h - top);
-    g.fillStyle = envCol(f, 0.16);
-    g.fillRect(x, h - v, 1, v);
-    envTop.push(h - v); envF.push(f);
+  // the TKEO envelope, behind (square root, against its highest): a stereo sample's channels' own, each in its lane
+  const dec = A.kw_dec();
+  const envs = S.chEnv ? S.chEnv.map((e, c) => [e, S.chEnvMax, Ly.lanes[c][0], Ly.lanes[c][0] + Ly.lanes[c][1], c])
+    : [[S.env, S.envMax, top, h, undefined]];
+  for (const [env, emax, y0, y1, c] of envs) {
+    const envTop = [], envF = [];
+    for (let x = 0; x < w; x++) {
+      const f = Math.floor((x / w) * S.n), a = Math.floor(f / dec), b = Math.max(a + 1, Math.floor(((x + 1) / w) * S.n / dec));
+      let m = 0;
+      for (let i = a; i < b && i < env.length; i++) if (env[i] > m) m = env[i];
+      const v = Math.sqrt(Math.max(0, m) / emax) * (y1 - y0);
+      g.fillStyle = envCol(f, 0.16, c);
+      g.fillRect(x, y1 - v, 1, v);
+      envTop.push(y1 - v); envF.push(f);
+    }
+    envLine(g, envTop, envF, 1.2 * d, c);   // (its outline: the energy the detector reads)
   }
-  envLine(g, envTop, envF, 1.2 * d);   // (its outline: the energy the detector reads)
   // the sample: min/max a pixel, in its slice's colour
   const chans = S.r ? [S.l, S.r] : [S.l];
   chans.forEach((ch, c) => {
@@ -1089,9 +1099,11 @@ function drawZoom() {
   const fx = (f) => (off(f) / span) * w, inView = (f) => off(f) <= span;
   const top = 26 * d, bot = h - 4 * d;
   const wrapF = (i) => { i = Math.floor(i) % S.n; return i < 0 ? i + S.n : i; };
-  {   // the TKEO envelope behind both rows, as in the sample view (square root, against its highest), between its
-      // points linear; in its slices' deeper colours
-    const dec = A.kw_dec(), ne = S.env.length, ys = new Float32Array(w + 1), fs = new Float64Array(w + 1), per0 = span / w;
+  const rowH = (bot - top) / nv, reads = [];
+  // the TKEO envelope behind both rows, as in the sample view (square root, against its highest), between its points
+  // linear; in its slices' deeper colours. A stereo sample's channels' own, each behind its row
+  for (const [env, emax, y0, y1, c] of S.chEnv ? S.chEnv.map((e, c) => [e, S.chEnvMax, top + c * rowH, top + (c + 1) * rowH, c]) : [[S.env, S.envMax, top, bot, undefined]]) {
+    const dec = A.kw_dec(), ne = env.length, ys = new Float32Array(w + 1), fs = new Float64Array(w + 1), per0 = span / w;
     for (let x = 0; x <= w; x++) {
       let f = a + x * per0;
       f = ((f % S.n) + S.n) % S.n;
@@ -1099,17 +1111,16 @@ function drawZoom() {
       let v;
       if (per0 >= dec) {   // (more than a point a pixel: the highest)
         v = 0;
-        for (let i = Math.floor(f / dec), e = Math.floor((f + per0) / dec); i <= e && i < ne; i++) if (S.env[i] > v) v = S.env[i];
+        for (let i = Math.floor(f / dec), e = Math.floor((f + per0) / dec); i <= e && i < ne; i++) if (env[i] > v) v = env[i];
       } else {
         const fi = f / dec, i0 = Math.min(ne - 1, Math.floor(fi)), i1 = Math.min(ne - 1, i0 + 1), t = fi - Math.floor(fi);
-        v = S.env[i0] + (S.env[i1] - S.env[i0]) * t;
+        v = env[i0] + (env[i1] - env[i0]) * t;
       }
-      ys[x] = bot - Math.sqrt(Math.max(0, v) / S.envMax) * (bot - top);
+      ys[x] = y1 - Math.sqrt(Math.max(0, v) / emax) * (y1 - y0);
     }
-    for (let x = 0; x < w; x++) { g.fillStyle = envCol(fs[x], 0.14); g.fillRect(x, ys[x], 1, bot - ys[x]); }
-    envLine(g, ys, fs, 1.3 * d);
+    for (let x = 0; x < w; x++) { g.fillStyle = envCol(fs[x], 0.14, c); g.fillRect(x, ys[x], 1, y1 - ys[x]); }
+    envLine(g, ys, fs, 1.3 * d, c);
   }
-  const rowH = (bot - top) / nv, reads = [];
   for (let c = 0; c < nv; c++) {
     const r0 = top + c * rowH, r1 = r0 + rowH, mid = (r0 + r1) / 2, sc = rowH / 2 / 32768 * 0.95;
     const ch = c ? S.r : S.l, v = V[c];

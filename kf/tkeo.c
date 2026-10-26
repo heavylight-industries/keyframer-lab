@@ -721,3 +721,47 @@ float tk_trn(const tk_cache *c, int32_t p, int32_t shape, int32_t *cursor)
     if (t > 1.0f) t = 1.0f;
     return sk + (sn - sk) * (t * t * (3.0f - 2.0f * t));
 }
+
+void tk_trn_parts(const tk_cache *c, int32_t p, tk_trnp *o)
+{
+    const int32_t m = c->m;
+    int32_t k = o->cursor, moving;
+    float inv, t;
+    o->k = 0;
+    o->sk = 0.0f;
+    o->sn = 0.0f;
+    o->t = 0.0f;
+    if (m <= 0) return;
+    if (k < 0) k = 0;
+    if (k > m - 1) k = m - 1;
+    moving = 1;   /* (tk_trn's walk) */
+    while (moving) {
+        if (k + 1 < m && c->pos[k + 1] <= p) k++;
+        else moving = 0;
+    }
+    moving = 1;
+    while (moving) {
+        if (k > 0 && c->pos[k] > p) k--;
+        else moving = 0;
+    }
+    o->cursor = k;
+    inv = tk_recip((float)m);
+    if (p < c->pos[0]) {   /* before the first transient: rising to it from nothing */
+        o->sn = 1.0f - (float)c->rank[0] * inv;
+        t = (float)p * tk_recip((float)(c->pos[0] > 0 ? c->pos[0] : 1));
+    } else {
+        o->k = k + 1;
+        o->sk = 1.0f - (float)c->rank[k] * inv;
+        if (k + 1 < m) {
+            o->sn = 1.0f - (float)c->rank[k + 1] * inv;
+            t = (float)(p - c->pos[k]) * tk_recip((float)(c->pos[k + 1] - c->pos[k]));
+        } else {   /* after the last: falling to nothing at the sample's end */
+            t = (float)(p - c->pos[k]) * tk_recip((float)(c->n - c->pos[k] > 0 ? c->n - c->pos[k] : 1));
+        }
+    }
+    if (t < 0.0f) t = 0.0f;
+    if (t > 1.0f) t = 1.0f;
+    o->t = t;
+    if (o->sk < 0.0f) o->sk = 0.0f;   /* (a transient without a rank: TK_NONE past m) */
+    if (o->sn < 0.0f) o->sn = 0.0f;
+}

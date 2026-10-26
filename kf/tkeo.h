@@ -192,4 +192,16 @@ int32_t tk_cache_cuts(const tk_cache *c, int32_t n_slices, int32_t *scratch);
 #define TK_PULSE    4800        /* PULSE's decay, frames (100 ms) */
 float   tk_trn(const tk_cache *c, int32_t p, int32_t shape, int32_t *cursor);
 
+/* TRN's parts at p, for the LFO waveforms CONT and PULS, each LFO shaping its own by its SPD (the owner,
+   2026-10-25; dt2.c packs them into reply word 673): sk the last transient's strength (0 before the first),
+   sn the next's (0 after the last: falling to nothing at the sample's end), t p's place between them (0 .. 1,
+   tk_trn's CONTOUR is sk + (sn - sk) smoothstep(t)), k the last transient's index + 1 (0 before the first: a
+   new value is a new hit). cursor: in and out, as tk_trn's (selcc: three arguments, the rest in the struct) */
+typedef struct {
+    int32_t cursor;
+    int32_t k;
+    float   sk, sn, t;
+} tk_trnp;
+void    tk_trn_parts(const tk_cache *c, int32_t p, tk_trnp *o);
+
 #endif

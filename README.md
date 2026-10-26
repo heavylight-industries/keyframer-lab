@@ -15,7 +15,8 @@ samples. Everything runs in the page; nothing is uploaded.
   the soft hits read at a glance; a dot marks each slice THIN keeps. A stereo sample's channels are also analysed
   apart, as on the unit (elemod's stereo detection): each lane's slices are THIN's picks from its own channel's
   transients, in the same mode and number (as the unit's WERP+ picks THIN per channel), and its voice plays those
-  borders; in RAND, or wherever the channels' hits differ, the two lanes' sections don't line up. The numbers on top
+  borders, and the TKEO envelope behind it is that channel's own; in RAND, or wherever the channels' hits differ,
+  the two lanes' sections don't line up. The numbers on top
   are the shared slices a click or a pad plays. Each channel's voice is drawn apart too: its heads in its lane, its
   splices as arcs (the left's rising from the splice lane's floor, the right's hanging from its top), and a row of its
   own in the zoomed view.

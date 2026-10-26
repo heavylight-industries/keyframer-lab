@@ -120,6 +120,8 @@ static int32_t  reg[TK_REGION_SCRATCH + 4];
 static tk_cache cache;
 static int32_t  cache_mode = -1;
 static float    env[KW_MAXN / KW_DEC + 2];
+static float    chenv[2][KW_MAXN / KW_DEC + 2];   /* a stereo sample's channels' traces (their own detectors) */
+static float   *trace_to = env;
 
 /* the cuts: written by kw_thin (the page) or by the page into the audio thread's (kw_set_cuts) */
 static int32_t  cuts[TK_SLICES + 4];
@@ -217,7 +219,7 @@ void kw_trace(const tk_state *s)
 {
     const int32_t b = s->i / KW_DEC;
     const float e = s->env[s->env_w];
-    if (s->i % KW_DEC == 0 || e > env[b]) env[b] = e;
+    if (s->i % KW_DEC == 0 || e > trace_to[b]) trace_to[b] = e;
 }
 
 /* the rates and the leash from the controls (dt2.c kf_controls): STR's sign the song's direction, PLAY's reverse
@@ -242,6 +244,7 @@ int16_t *kw_pcm(int32_t ch) { return pcm[ch ? 1 : 0]; }
 int32_t  kw_maxn(void) { return KW_MAXN; }
 int32_t  kw_dec(void) { return KW_DEC; }
 float   *kw_env(void) { return env; }
+float   *kw_chan_env(int32_t c) { return chenv[c ? 1 : 0]; }
 int32_t *kw_cuts(void) { return cuts; }
 float   *kw_out(int32_t ch) { return out[ch ? 1 : 0]; }
 int32_t *kw_log(void) { return slog; }
@@ -282,7 +285,9 @@ int32_t kw_analyze(void)
     int32_t c;
     for (c = 0; c < 2 && n_ch > 1; c++) {   /* (a stereo sample's channels apart, each its own RAND draw: as dt2.c) */
         tk_init(&cst, (uintptr_t)pcm[c], (uintptr_t)pcm[c], n_frames, chev);
+        trace_to = chenv[c];
         while (!tk_run(&cst, 1 << 16)) {}
+        trace_to = env;
         tk_cache_fill(&chcache[c], &cst, chev, cst.count, n_frames, 1u ^ (uint32_t)(c + 1), scratch);
     }
     tk_init(&st, (uintptr_t)pcm[0], n_ch > 1 ? (uintptr_t)pcm[1] : 0, n_frames, ev);
