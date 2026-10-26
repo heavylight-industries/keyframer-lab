@@ -478,14 +478,16 @@ static void ksplice(kf_voice *v, const kf_params *p, int32_t eps)
                stretch rate: over the fade (len samples of head travel, len / |pitch| out) they part by
                |pitch - stretch| / |pitch| x len. More than d (the play head running back as the reference runs on:
                reverse loop) and each splice ended further apart than it began, doubling to the window's edge
-               (Keyframer Lab's trace, 2026-10-25). Capped there (d |pitch| / |pitch - stretch|) the gap only held,
-               and still ran away at other speeds (TUNE -12, +7): the fade at most half that, so a splice ends with
-               the heads half as far apart as it began, as a forward leash splice's do (the owner, 2026-10-26) */
+               (Keyframer Lab's trace, 2026-10-25): the fade at most d |pitch| / |pitch - stretch|, a splice ending no
+               further apart than it began. (KF81 took half that and clicked: reversed at K 64, 180-280 splices a second
+               of 3 ms fades; at break-even 27-76 ms. The play head strays further meanwhile, about 2500 samples on
+               average at TUNE 0, at worst some 20000 at -12 or +7, bounded: against the reference nothing is behind it
+               to run into, the owner, 2026-10-26) */
             const float sa = p->pitch < 0.0f ? -p->pitch : p->pitch;
             float rel = p->pitch - p->stretch;
             if (rel < 0.0f) rel = -rel;
             if (rel > sa) {
-                const float cap = (float)d * sa * krecip(rel) * 0.5f;
+                const float cap = (float)d * sa * krecip(rel);
                 if ((float)d > cap) d = (int32_t)cap;
             }
         }
