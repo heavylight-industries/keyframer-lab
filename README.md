@@ -34,8 +34,10 @@ samples. Everything runs in the page; nothing is uploaded.
 - **Keyframes**: the analyzer keeps a peak or trough only when it differs from the last keyframe by more than 0.01
   of full scale (the unit's), so quiet passages and the noise floor get few keyframes and the grains adapt.
 - **The knobs**: STR (the reference's speed), TUNE (the play head's pitch, ±60 semitones), SIZE (K, the leash).
-  The lock is a three-way switch: Tune follows (turning STR takes TUNE along at their ratio), Off, or Str follows
-  (turning TUNE takes STR along); slow everything down to watch, the splices and borders the same.
+  Under them a spring-loaded switch: a click on **Tune = Str** sets TUNE to STR's rate (the play head as fast as the
+  reference), **Str = Tune** the other way; **Lock** in the middle ties them together at their ratio, so turning
+  either takes the other along: slow everything down to watch, the splices and borders the same.
+- **Library**: picking another sample while one plays keeps playing, from the same share of the way through.
 
 ## MIDI and your DAW
 

@@ -151,6 +151,7 @@ static int32_t  leash = 64, once = 1;
 static int32_t  ring[2][KW_RING];
 static kf_voice kv[2];
 static int32_t  playing, slice_note;
+static int32_t  start_at = -1, carry;   /* kw_trig_at's start; a note playing when kw_sample swapped the sample */
 static int32_t  done[2], fade[2], since_wrap[2], retrig[2];
 static float    last_out[2];
 static int32_t  edge_ip[2];
@@ -258,6 +259,7 @@ void kw_sample(int32_t n, int32_t stereo)
     n_ch = stereo ? 2 : 1;
     c_s = 0;
     c_e = n;
+    carry = playing;
     playing = 0;
     tn_live = 0;
     cache_mode = -1;
@@ -267,7 +269,7 @@ void kw_sample(int32_t n, int32_t stereo)
         kv[c].tn = 0;
         tnc[c] = 0;
         done[c] = 1;
-        last_out[c] = 0.0f;
+        if (!carry) last_out[c] = 0.0f;   /* (kept for kw_trig_at's declick from the old sample) */
     }
     derive();
 }
@@ -479,8 +481,9 @@ void kw_trig(int32_t slice)
     at = s;
     if (stretch < 0.0f) at = e - 1;
     if (stretch == 0.0f && c_play <= 1) at = e - 1;
+    if (start_at >= 0) at = start_at < s ? s : start_at > e - 1 ? e - 1 : start_at;
     for (c = 0; c < n_ch; c++) {
-        retrig[c] = playing && !done[c];
+        retrig[c] = (playing && !done[c]) || carry;
         kf_trig(&kv[c], (uintptr_t)pcm[c], n_frames, at);
         kv[c].tp = tplc[c];
         kv[c].tn = trans_on ? tnc[c] : 0;
@@ -495,12 +498,23 @@ void kw_trig(int32_t slice)
     }
     slice_note = slice;
     playing = 1;
+    start_at = -1;
+    carry = 0;
+}
+
+/* a note from a given frame (clamped to the region): the page's sample switch keeps playing from the same share of
+   the way through, declicked from where the old sample left off */
+void kw_trig_at(int32_t at)
+{
+    start_at = at;
+    kw_trig(0);
 }
 
 void kw_stop(void)
 {
     int32_t c;
     playing = 0;
+    carry = 0;
     for (c = 0; c < 2; c++) {
         done[c] = 1;
         last_out[c] = 0.0f;
