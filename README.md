@@ -24,6 +24,10 @@ samples. Everything runs in the page; nothing is uploaded.
   head, the incoming head of a crossfade), with the keyframes (the sample's peaks and troughs) between them, ticked on
   the floor and shaded. When more than K of them lie between the heads, the play head splices: the dotted line with
   its own flag marks where. Drag it to look around while nothing plays.
+  **Reach** (on by default; experimental) shades how far a read can get from the reference: 2K keyframes on the
+  side the gap is heading (a splice starts at K, and the outgoing head reads on through a fade about as long), never
+  past the reference's slice (the play head waits at the next transient and jumps to the one the reference crosses).
+  It grows over sparse keyframes and shrinks over dense ones.
 - **Light or dark**: the switch in the header (the screens stay dark).
 - **Load**: the header's readout, the engine's render time against the audio it made (the audio thread), and the
   page's drawing against each frame.
