@@ -87,8 +87,14 @@ int main(int argc, char **argv)
         else if (!strcmp(cmd, "thin")) {
             const int32_t n = kw_thin((int32_t)a, (int32_t)b);
             kw_set_cuts(n);
+            kw_set_chan_cuts(0, kw_chan_n(0));   /* (stereo detection: each voice its own) */
+            kw_set_chan_cuts(1, kw_chan_n(1));
             printf("thin %d of %d:", n, kw_thin_max((int32_t)a));
             for (int32_t k = 0; k < n; k++) printf(" %d", kw_cuts()[k]);
+            for (int32_t c = 0; c < 2; c++) {   /* (each voice's borders) */
+                printf(" |");
+                for (int32_t k = 0; k < kw_chan_n(c); k++) printf(" %d", kw_chan_cuts(c)[k]);
+            }
             printf("\n");
         } else if (!strcmp(cmd, "set")) kw_set((int32_t)a, (float)b);
         else if (!strcmp(cmd, "trig")) kw_trig((int32_t)a);

@@ -40,8 +40,11 @@ for (const raw of readFileSync(scriptPath, "utf8").split("\n")) {
   else if (w[0] === "thin") {
     const n = k.kw_thin(a | 0, b | 0);
     k.kw_set_cuts(n);
+    k.kw_set_chan_cuts(0, k.kw_chan_n(0));
+    k.kw_set_chan_cuts(1, k.kw_chan_n(1));
     const cuts = Array.from(new Int32Array(mem(), k.kw_cuts(), n));
-    lines.push(`thin ${n} of ${k.kw_thin_max(a | 0)}:` + cuts.map((x) => " " + x).join(""));
+    const chan = [0, 1].map((c) => " |" + Array.from(new Int32Array(mem(), k.kw_chan_cuts(c), k.kw_chan_n(c))).map((x) => " " + x).join(""));
+    lines.push(`thin ${n} of ${k.kw_thin_max(a | 0)}:` + cuts.map((x) => " " + x).join("") + chan.join(""));
   } else if (w[0] === "set") k.kw_set(a | 0, Math.fround(b));
   else if (w[0] === "trig") k.kw_trig(a | 0);
   else if (w[0] === "stop") k.kw_stop();

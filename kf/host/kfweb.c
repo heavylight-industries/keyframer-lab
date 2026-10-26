@@ -123,8 +123,22 @@ static float    env[KW_MAXN / KW_DEC + 2];
 
 /* the cuts: written by kw_thin (the page) or by the page into the audio thread's (kw_set_cuts) */
 static int32_t  cuts[TK_SLICES + 4];
-static int32_t  tpl[TK_SLICES + 4];   /* the voices' list (kf_voice tp) */
+static float    lev[TK_SLICES + 4];   /* each slice's strongest transient (the envelope's peak), kw_thin's */
+static int32_t  tpl[TK_SLICES + 4];   /* the combined list (the slices' starts) */
 static int32_t  tn_live, trans_on = 1;
+
+/* stereo detection (as the unit, elemod 420e6bc, dt2.c tk_chan_pass / kf_bord_chan): a stereo sample's channels
+   analysed apart too; each voice's borders are the slices' starts, each moved onto its own channel's nearest
+   transient within KW_CHAN_SNAP, or dropped (a hit the other channel has and this one hasn't: run through). The
+   slices stay the combined analysis's */
+#define KW_CHAN_SNAP 960   /* 20 ms (dt2.c's KF_CHAN_SNAP) */
+static tk_state cst;
+static tk_event chev[TK_MAX_EV];
+static tk_cache chcache[2];
+static int32_t  chcuts[2][TK_SLICES + 4];   /* kw_thin's per channel (the page), or the page's into the audio thread's */
+static int32_t  chn[2];
+static int32_t  tplc[2][TK_SLICES + 4];     /* each voice's list (kf_voice tp) */
+static int32_t  tnc[2];
 
 /* the controls, and what they make */
 static float    c_str = 1.0f, c_tune = 0.0f, c_size = 60.0f, c_gain = 1.0f / 32768.0f;
@@ -247,8 +261,9 @@ void kw_sample(int32_t n, int32_t stereo)
     cache_mode = -1;
     for (c = 0; c < 2; c++) {
         kf_init(&kv[c], ring[c], KW_RING);
-        kv[c].tp = tpl;
+        kv[c].tp = tplc[c];
         kv[c].tn = 0;
+        tnc[c] = 0;
         done[c] = 1;
         last_out[c] = 0.0f;
     }
@@ -260,6 +275,12 @@ void kw_sample(int32_t n, int32_t stereo)
 int32_t kw_analyze(void)
 {
     TK_READY();
+    int32_t c;
+    for (c = 0; c < 2 && n_ch > 1; c++) {   /* (a stereo sample's channels apart, each its own RAND draw: as dt2.c) */
+        tk_init(&cst, (uintptr_t)pcm[c], (uintptr_t)pcm[c], n_frames, chev);
+        while (!tk_run(&cst, 1 << 16)) {}
+        tk_cache_fill(&chcache[c], &cst, chev, cst.count, n_frames, 1u ^ (uint32_t)(c + 1), scratch);
+    }
     tk_init(&st, (uintptr_t)pcm[0], n_ch > 1 ? (uintptr_t)pcm[1] : 0, n_frames, ev);
     while (!tk_run(&st, 1 << 16)) {}
     cache_mode = -1;
@@ -327,10 +348,48 @@ int32_t kw_thin(int32_t mode, int32_t n)
     got = tk_cache_cuts(&cache, n, reg);
     while (k < got) {
         cuts[k] = reg[k];
+        lev[k] = 0.0f;
         k++;
+    }
+    {   /* the levels: the highest peak among the transients from each cut to the next (the events are in time
+           order) */
+        int32_t e = 0, s = 0;
+        while (e < st.count) {
+            while (s + 1 < got && ev[e].pos >= cuts[s + 1]) s++;
+            if (ev[e].pos >= cuts[s] && ev[e].value > lev[s]) lev[s] = ev[e].value;
+            e++;
+        }
+    }
+    {   /* each channel's borders: the cuts on its own hits (dt2.c kf_bord_chan); a mono sample's the cuts */
+        int32_t c;
+        for (c = 0; c < 2; c++) {
+            const tk_cache *cc = &chcache[c];
+            int32_t j = 0, m = 0, last = -1, i;
+            if (n_ch < 2) {
+                k = 0;
+                while (k < got) { chcuts[c][k] = cuts[k]; k++; }
+                chn[c] = got;
+                continue;
+            }
+            for (k = 0; k < got; k++) {
+                const int32_t p = cuts[k];
+                int32_t best = -1, bd = KW_CHAN_SNAP + 1;
+                while (j < cc->m && cc->pos[j] < p - KW_CHAN_SNAP) j++;
+                for (i = j; i < cc->m && cc->pos[i] <= p + KW_CHAN_SNAP; i++) {
+                    int32_t d = cc->pos[i] - p;
+                    if (d < 0) d = -d;
+                    if (d < bd) { bd = d; best = cc->pos[i]; }
+                }
+                if (best >= 0 && best != last) { chcuts[c][m++] = best; last = best; }
+            }
+            chn[c] = m;
+        }
     }
     return got;
 }
+
+/* kw_thin's slices' levels: the envelope's highest peak in each (the page shades the slices by them) */
+float *kw_levels(void) { return lev; }
 
 /* the engine's transients: the first n of kw_cuts (0: none), now (a note playing finds the next one) */
 void kw_set_cuts(int32_t n)
@@ -344,10 +403,28 @@ void kw_set_cuts(int32_t n)
     }
     tn_live = n;
     for (c = 0; c < 2; c++) {
-        kv[c].tn = trans_on ? tn_live : 0;
+        k = 0;
+        while (k < n) { tplc[c][k] = tpl[k]; k++; }
+        tnc[c] = n;
+        kv[c].tn = trans_on ? tnc[c] : 0;
         if (playing) ktfind(&kv[c]);
     }
 }
+
+/* a voice's own borders (stereo detection): the first n of kw_chan_cuts(c), after kw_set_cuts */
+void kw_set_chan_cuts(int32_t c, int32_t n)
+{
+    int32_t k = 0;
+    if (c < 0 || c > 1) return;
+    if (n > TK_SLICES) n = TK_SLICES;
+    if (n < 0) n = 0;
+    while (k < n) { tplc[c][k] = chcuts[c][k]; k++; }
+    tnc[c] = n;
+    kv[c].tn = trans_on ? tnc[c] : 0;
+    if (playing) ktfind(&kv[c]);
+}
+int32_t *kw_chan_cuts(int32_t c) { return chcuts[c & 1]; }
+int32_t  kw_chan_n(int32_t c) { return chn[c & 1]; }
 
 /* ---- the controls and the note ------------------------------------------ */
 
@@ -367,7 +444,7 @@ void kw_set(int32_t id, float x)
     case 6:
         trans_on = x != 0.0f;
         for (c = 0; c < 2; c++) {
-            kv[c].tn = trans_on ? tn_live : 0;
+            kv[c].tn = trans_on ? tnc[c] : 0;
             if (playing) ktfind(&kv[c]);
         }
         break;
@@ -404,8 +481,8 @@ void kw_trig(int32_t slice)
     for (c = 0; c < n_ch; c++) {
         retrig[c] = playing && !done[c];
         kf_trig(&kv[c], (uintptr_t)pcm[c], n_frames, at);
-        kv[c].tp = tpl;
-        kv[c].tn = trans_on ? tn_live : 0;
+        kv[c].tp = tplc[c];
+        kv[c].tn = trans_on ? tnc[c] : 0;
         done[c] = 0;
         fade[c] = 0;
         since_wrap[c] = slice ? 0 : 1 << 20;

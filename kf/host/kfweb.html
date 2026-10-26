@@ -12,20 +12,30 @@
    ramp the page fills at start (--<hue>-0 lightest .. 4 deepest). */
 :root {
   color-scheme: dark;
-  --paper: #08080a;       /* the page: near-black, so the four areas stand off it */
-  --well: #242328;        /* the deck's panels */
-  --raised: #2e2c33;      /* boxes inside them */
-  --line: #3a3840;
-  --track: #48454e;
-  --text: #efe5d2;        /* cream */
-  --dim: #b3a596;
-  --faint: #7c7680;
-  --title: #e8a6b0;       /* the title: a light burgundy */
+  /* neutrals: soft grey shaded blue, over a beige undertone (the text, the title) */
+  --paper: #0b0e12;       /* the page: near-black, a breath of blue, so the four areas stand off it */
+  --well: #1e242c;        /* the deck's panels */
+  --raised: #28303a;      /* boxes inside them */
+  --line: #36414e;
+  --track: #475463;
+  --hover: #33404d;
+  --text: #ede6d8;        /* beige cream */
+  --dim: #b0b8c2;
+  --faint: #77828f;
+  --title: #dccaa8;       /* the title: beige */
+  --knob-lbl: #f4f1ea;
+  --on-light: #1a1f26;    /* text on a light key (a mode's, cream) */
+  --slot: #10141a;        /* THIN's and LEN's empty steps */
   --burgundy: #8a2f40;    /* Stop */
-  --bg: #111013;          /* the screens: near-black */
-  --screen-line: #29272e;
-  --screen-ink: #eadfca;
-  --screen-dim: #8d8792;
+  /* the screens: dark in either theme (an instrument's displays) */
+  --bg: #0e1217;
+  --screen-line: #26303a;
+  --screen-ink: #e8e2d4;
+  --screen-dim: #8693a0;
+  --screen-border: #070a0d;
+  --screen-inset: #2c3641;
+  --screen-tag: #b6bfc9;
+  --screen-read: #d3d9df;
   /* the modes; the heads in the same three */
   --rose: #e0959f;        /* VOL, the reference */
   --powder: #93b8d6;      /* GRID, the play head */
@@ -37,6 +47,24 @@
   --f-mono: "Courier Prime", "Courier New", ui-monospace, monospace;
   --mode: var(--rose); --mode-0: #f0c3c9; --mode-3: #9a5a64; --mode-4: #6b3b43;
   --bevel: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -2px 0 rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+/* the light theme (the switch in the header; the system's choice until then): beige paper, soft blue-grey panels,
+   slate text; the screens as in the dark */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --paper: #e9e3d7;
+  --well: #d7dce2;
+  --raised: #c9d0d8;
+  --line: #aab4bf;
+  --track: #96a2ae;
+  --hover: #bcc5cf;
+  --text: #1d242c;
+  --dim: #45515e;
+  --faint: #6b7682;
+  --title: #3a5674;
+  --knob-lbl: #1d242c;
+  --slot: #a9b3be;
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -2px 0 rgba(30, 40, 52, 0.12), 0 4px 14px rgba(30, 40, 52, 0.18);
 }
 html, body { background: var(--paper); color: var(--text); }
 [hidden] { display: none !important; }
@@ -54,20 +82,29 @@ button, input { font: inherit; color: inherit; }
 .brand span { font: 500 12px/1.2 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
 .btn { background: var(--raised); border: 1px solid var(--track); border-radius: 9px; padding: 8px 18px; cursor: pointer; box-shadow: var(--bevel);
   font: 700 13px/1.2 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--text); }
-.btn:hover { background: #3a3840; }
+.btn:hover { background: var(--hover); }
 .btn.go { background: var(--green); border-color: var(--green-3, #56743f); color: #18200f; min-width: 100px; }
 .btn.go[aria-pressed="true"] { background: var(--burgundy); border-color: #5a1e29; color: var(--cream); }
 .file { font: 400 14px/1.3 var(--f-mono); color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 48ch; }
 .note { margin: 0; color: var(--dim); font-size: 15px; max-width: 98ch; }
 .note b { font-weight: 600; }
+.k-ref { color: var(--rose-0, #f0c3c9); } .k-play { color: var(--powder-0, #c3dbee); } .k-kf { color: var(--green-0, #cbe4b8); }
+/* light: the deeper shade of each colour where the pastel won't read on the paper */
+:root[data-theme="light"] .k-ref { color: var(--rose-3, #9a5a64); }
+:root[data-theme="light"] .k-play { color: var(--powder-3, #52738f); }
+:root[data-theme="light"] .k-kf { color: var(--green-3, #56743f); }
+:root[data-theme="light"] .mk b { color: var(--h3); }
+:root[data-theme="light"] .mk[aria-pressed="true"] b { color: var(--on-light); }
+:root[data-theme="light"] .fval { color: var(--mode-3); }
+:root[data-theme="light"] .fval.lenv { color: var(--text); }
 .warn { margin: 0; color: var(--title); font-size: 14px; }
 
 /* the screens */
-.view { position: relative; background: var(--bg); border: 2px solid #0a080b; border-radius: 14px; overflow: hidden; touch-action: none;
-  box-shadow: inset 0 0 0 1px #34323a, var(--bevel); }
+.view { position: relative; background: var(--bg); border: 2px solid var(--screen-border); border-radius: 14px; overflow: hidden; touch-action: none;
+  box-shadow: inset 0 0 0 1px var(--screen-inset), var(--bevel); }
 .view canvas { display: block; width: 100%; }
-.view .tag { position: absolute; left: 14px; top: 9px; font: 700 12px/1 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; color: #bbb5bf; pointer-events: none; }
-.view .read { position: absolute; right: 14px; top: 9px; font: 400 13px/1 var(--f-mono); color: #d6d0d8; pointer-events: none; }
+.view .tag { position: absolute; left: 14px; top: 9px; font: 700 12px/1 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; color: var(--screen-tag); pointer-events: none; }
+.view .read { position: absolute; right: 14px; top: 9px; font: 400 13px/1 var(--f-mono); color: var(--screen-read); pointer-events: none; }
 #wave { height: 300px; cursor: crosshair; }
 #zoom { height: 170px; }
 .zoomctl { position: absolute; right: 14px; bottom: 9px; display: flex; gap: 8px; align-items: center; font: 400 12px/1 var(--f-mono); color: var(--screen-dim); }
@@ -96,13 +133,13 @@ button, input { font: inherit; color: inherit; }
 .knob { display: grid; justify-items: center; align-content: start; gap: 4px; user-select: none; touch-action: none; }
 .knob svg { width: 132px; max-width: 100%; aspect-ratio: 1; cursor: ns-resize; overflow: visible; }
 .knob:nth-child(2) { margin-top: 96px; }   /* TUNE a step lower: the three in a V */
-.knob .lbl { font: 700 23px/1 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; margin-top: 4px; color: #f6f3ee; }
+.knob .lbl { font: 700 23px/1 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; margin-top: 4px; color: var(--knob-lbl); }
 .knob .val { font: 700 16px/1.2 var(--f-mono); color: var(--text); white-space: nowrap; }
 .knob .sub { font: 500 11px/1.3 var(--f-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); text-align: center; }
 .lockrow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; margin-top: 14px; }
 .lock { background: var(--raised); border: 1px solid var(--track); border-radius: 999px; padding: 7px 16px; cursor: pointer; box-shadow: var(--bevel);
   font: 700 12px/1.2 var(--f-display); letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); }
-.lock[aria-pressed="true"] { background: var(--cream); border-color: var(--cream); color: #1c1418; }
+.lock[aria-pressed="true"] { background: var(--cream); border-color: var(--cream); color: var(--on-light); }
 .lockval { font: 400 13px/1.3 var(--f-mono); color: var(--dim); }
 .hint { grid-column: 1 / -1; margin: 12px 6px 0; font-size: 13px; line-height: 1.45; color: var(--faint); }
 .side { display: grid; gap: 14px; align-content: start; padding: 14px 16px 16px; min-width: 0; }
@@ -112,7 +149,7 @@ button, input { font: inherit; color: inherit; }
 .seg button { background: transparent; border: 0; border-right: 1px solid var(--track); padding: 7px 12px; cursor: pointer;
   font: 600 12px/1.2 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); }
 .seg button:last-child { border-right: 0; }
-.seg button[aria-pressed="true"] { background: var(--cream); color: #1c1418; }
+.seg button[aria-pressed="true"] { background: var(--cream); color: var(--on-light); }
 .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: 600 12px/1 var(--f-display); letter-spacing: 0.18em; text-transform: uppercase; }
 .switch input { accent-color: var(--mode); width: 17px; height: 17px; }
 
@@ -125,8 +162,8 @@ button, input { font: inherit; color: inherit; }
 .mk span { font: 400 13px/1.3 var(--f-body); }
 .mk[data-v="2"] { --h: var(--powder); --h0: var(--powder-0, #c3dbee); --h3: var(--powder-3, #52738f); }
 .mk[data-v="3"] { --h: var(--green); --h0: var(--green-0, #cbe4b8); --h3: var(--green-3, #56743f); }
-.mk[aria-pressed="true"] { background: var(--h); border-color: var(--h3); border-top-color: var(--h3); color: #1c1418; }
-.mk[aria-pressed="true"] b { color: #1c1418; }
+.mk[aria-pressed="true"] { background: var(--h); border-color: var(--h3); border-top-color: var(--h3); color: var(--on-light); }
+.mk[aria-pressed="true"] b { color: var(--on-light); }
 .modes[data-off="1"] .mk { opacity: 0.5; }
 
 /* THIN: a crossfader across the panel */
@@ -137,7 +174,7 @@ button, input { font: inherit; color: inherit; }
 .ftrack { position: relative; height: 72px; cursor: ew-resize; touch-action: none; border-radius: 12px; background: var(--raised); border: 1px solid var(--line); box-shadow: var(--bevel); }
 .ftrack:focus-visible { outline-offset: 3px; }
 .fsegs { position: absolute; left: 22px; right: 22px; top: 50%; height: 22px; margin-top: -11px; display: flex; gap: 3px; }
-.fsegs i { flex: 1; border-radius: 4px; background: #131215; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); }
+.fsegs i { flex: 1; border-radius: 4px; background: var(--slot); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); }
 .fcap { position: absolute; top: 7px; bottom: 7px; width: 30px; margin-left: -15px; left: 22px; border-radius: 6px; pointer-events: none;
   background: linear-gradient(180deg, #444, #1d1d1d 50%, #121212 51%, #2a2a2a); border: 1px solid #050505; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.55); }
 .fcap::before { content: ""; position: absolute; left: 50%; top: 5px; bottom: 5px; width: 3px; margin-left: -1.5px; border-radius: 1px; background: #f1ebdf; }
@@ -163,7 +200,7 @@ button, input { font: inherit; color: inherit; }
 .ostabs { display: inline-flex; gap: 6px; }
 .ostabs button { background: transparent; border: 1px solid var(--track); border-radius: 999px; padding: 5px 12px; cursor: pointer;
   font: 700 11px/1.2 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); }
-.ostabs button[aria-pressed="true"] { background: var(--cream); border-color: var(--cream); color: #1c1418; }
+.ostabs button[aria-pressed="true"] { background: var(--cream); border-color: var(--cream); color: var(--on-light); }
 .osbody ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; color: var(--text); }
 .osbody code { font: 400 12px/1.3 var(--f-mono); background: var(--raised); padding: 1px 5px; border-radius: 4px; }
 @media (max-width: 860px) {
@@ -193,9 +230,10 @@ button, input { font: inherit; color: inherit; }
     <button class="btn" id="loaddir" type="button">Open folder</button>
     <button class="btn" id="load" type="button">Open files</button>
     <button class="btn go" id="play" type="button" aria-pressed="false">Play</button>
+    <button class="btn" id="theme" type="button" aria-label="Light or dark">Light</button>
   </header>
-  <p class="note" id="note">The <b style="color: var(--rose-0, #f0c3c9)">reference</b> walks through the sample at STR's rate; the <b style="color: var(--powder-0, #c3dbee)">play head</b> reads it at TUNE's rate.
-    When the play head drifts more than K <b style="color: var(--green-0, #cbe4b8)">keyframes</b> (the sample's peaks and troughs) from the reference, it crossfades back to it: a splice, drawn as an arc above the sample.
+  <p class="note" id="note">The <b class="k-ref">reference</b> walks through the sample at STR's rate; the <b class="k-play">play head</b> reads it at TUNE's rate.
+    When the play head drifts more than K <b class="k-kf">keyframes</b> (the sample's peaks and troughs) from the reference, it crossfades back to it: a splice, drawn as an arc above the sample.
     <b>Transients</b> are borders: the play head waits before one until the reference crosses it, so every hit plays once. Click a slice to play it; drag the region's edges.</p>
   <p class="warn" id="warn" hidden></p>
 
@@ -316,6 +354,10 @@ function makeCore(k) {
     else if (m.type === "cuts") {
       new Int32Array(buf(), k.kw_cuts(), m.cuts.length).set(m.cuts);
       k.kw_set_cuts(m.cuts.length);
+      if (m.chan) m.chan.forEach((l, c) => {   // (stereo detection: each voice's own borders)
+        new Int32Array(buf(), k.kw_chan_cuts(c), l.length).set(l);
+        k.kw_set_chan_cuts(c, l.length);
+      });
     } else if (m.type === "trig") { k.kw_set(4, m.s); k.kw_set(5, m.e); k.kw_trig(m.slice ? 1 : 0); }
     else if (m.type === "region") { k.kw_set(4, m.s); k.kw_set(5, m.e); }
     else if (m.type === "stop") k.kw_stop();
@@ -398,8 +440,8 @@ for (const h of HUES) {
 const C = { bg: css("--bg"), line: css("--screen-line"), ink: css("--screen-ink") };
 const MODE_HUE = { 1: "rose", 2: "powder", 3: "green" };
 const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`; };
-// a mode's slices alternate its colour and a step from it: the hue turned 55 degrees, a touch deeper
-const step = (hex) => { const [L, Cc, H] = toOklch(hex); return fromOklch(L - 0.05, Cc * 0.95, H + 55); };
+// a mode's slices alternate its colour and a step from it: the hue turned back 75 degrees, a touch deeper
+const step = (hex) => { const [L, Cc, H] = toOklch(hex); return fromOklch(L - 0.05, Cc * 0.95, H - 75); };
 const PAIR = {};
 for (const m of [1, 2, 3]) PAIR[m] = { fill: [P[MODE_HUE[m]][1], step(P[MODE_HUE[m]][1])], text: [P[MODE_HUE[m]][0], step(P[MODE_HUE[m]][0])] };
 
@@ -504,6 +546,8 @@ const CAL_DEF = A.kw_calibrate(), DELAY_DEF = A.kw_tk_default(7);
 const FC_DEF = Math.atan(A.kw_tk_default(0)) * SR / Math.PI;   // (the unit's: 25.59 Hz)
 const posOf = (fc) => Math.log(fc / FC_LO) / Math.log(FC_HI / FC_LO);
 const POS_DEF = posOf(FC_DEF);
+const FC_START = 46;   // the page's default (heavylight, 2026-10-25: the best trade-off by eye; the unit's stays a snap point)
+const POS_START = posOf(FC_START);
 let smoothBusy = false;
 function setSmoothing(pos) {
   const unit = Math.abs(pos - POS_DEF) < 0.012, fc = unit ? FC_DEF : FC_LO * (FC_HI / FC_LO) ** pos;
@@ -542,7 +586,14 @@ function updateThin(resetToMax) {
   S.all = Array.from(new Int32Array(abuf(), A.kw_cuts(), got));
   got = A.kw_thin(S.mode, S.thin);
   S.cuts = Array.from(new Int32Array(abuf(), A.kw_cuts(), got));
-  post({ type: "cuts", cuts: Int32Array.from(S.cuts) });
+  {   // each slice's strength: its loudest transient's envelope peak, square-rooted (TKEO is energy: amplitude
+      // squared) against the loudest slice's
+    const raw = Array.from(new Float32Array(abuf(), A.kw_levels(), got), v => Math.sqrt(Math.max(0, v)));
+    const top = Math.max(...raw, 1e-12);
+    S.lev = raw.map(v => v / top);
+  }
+  S.chan = [0, 1].map((c) => Array.from(new Int32Array(abuf(), A.kw_chan_cuts(c), A.kw_chan_n(c))));
+  post({ type: "cuts", cuts: Int32Array.from(S.cuts), chan: S.chan.map((l) => Int32Array.from(l)) });
   paintLen();
   if (S.slice) {   // (the selected slice: the new cuts' slice at the spot clicked, a playing note's region with it)
     S.slice = sliceAt(S.pick);
@@ -622,14 +673,14 @@ function fit(cv) {
 const xOf = (f, w) => (f / Math.max(1, S.n)) * w;
 /* the sample view's rows: the splice lane on top, then the channels */
 function layout(h) {
-  const d = DPR(), lane = 78 * d, num = 16 * d, top = lane + num, body = h - top - 4 * d;
+  const d = DPR(), lane = 78 * d, num = 30 * d, top = lane + num, body = h - top - 4 * d;
   return { lane, top, lanes: S.r ? [[top, body / 2], [top + body / 2, body / 2]] : [[top, body]] };
 }
 
 /* the envelope's colour at frame f: its slice's deeper shade (the trace has the lighter), cream with no transients */
 function envCol(f, alpha) {
   const i = sliceIdx(f);
-  return rgba(i < 0 ? P.cream[1] : PAIR[S.mode].fill[i % 2], alpha);
+  return rgba(i < 0 ? P.cream[1] : sliceFill(i), alpha);
 }
 /* the envelope's outline through ys (one point a pixel, at frames fs), a path a run of one colour */
 function envLine(g, ys, fs, lw) {
@@ -649,12 +700,25 @@ function arcCol(t) {
   if (t.kind === 2 && S.trans && S.cuts.length > 1) {
     let best = -1, bd = 129;
     S.cuts.forEach((c, i) => { const dd = Math.abs(c - t.to); if (dd < bd) { bd = dd; best = i; } });
-    if (best >= 0) return PAIR[S.mode].text[best % 2];
+    if (best >= 0) return sliceText(best);
   }
   return traceCol(t.to);
 }
 
-/* the trace's colour at frame f: its slice's (the lighter of the pair), cream with no transients */
+/* a slice's colour at its strength: the colour's value (brightness) scaled from LEV_FLOOR (the quietest) to whole
+   (the loudest), so the hits read at a glance across every slice */
+const LEV_FLOOR = 0.32;
+function levOf(i) { return S.lev && i >= 0 && i < S.lev.length ? S.lev[i] : 1; }
+function shade(hex, l) {
+  const k = LEV_FLOOR + (1 - LEV_FLOOR) * Math.max(0, Math.min(1, l));
+  const n = parseInt(hex.slice(1), 16);
+  const ch = v => Math.round(v * k).toString(16).padStart(2, "0");
+  return "#" + ch((n >> 16) & 255) + ch((n >> 8) & 255) + ch(n & 255);
+}
+function sliceText(i) { return shade(PAIR[S.mode].text[i % 2], levOf(i)); }
+function sliceFill(i) { return shade(PAIR[S.mode].fill[i % 2], levOf(i)); }
+
+/* the trace's colour at frame f: its slice's (the lighter of the pair) at its strength, cream with no transients */
 function sliceIdx(f) {
   const c = S.cuts;
   if (!S.trans || c.length < 2) return -1;
@@ -664,15 +728,15 @@ function sliceIdx(f) {
 }
 function traceCol(f) {
   const i = sliceIdx(f);
-  return i < 0 ? rgba(C.ink, 0.95) : PAIR[S.mode].text[i % 2];
+  return i < 0 ? rgba(C.ink, 0.95) : sliceText(i);
 }
 
 /* a chosen cut's marker: a dot in the colour of the slice it starts (the lighter of the pair, alternating as the
    zones do), ringed dark so it reads on any slice */
 function cutDot(g, x, y, d, i) {
   x = Math.max(5 * d, Math.min(g.canvas.width - 6 * d, x));   // (inside the view: the first cut is at 0)
-  g.fillStyle = "#0b0b0d"; g.beginPath(); g.arc(x + 0.5 * d, y, 5 * d, 0, 2 * Math.PI); g.fill();
-  g.fillStyle = PAIR[S.mode].text[i % 2]; g.beginPath(); g.arc(x + 0.5 * d, y, 3.6 * d, 0, 2 * Math.PI); g.fill();
+  g.fillStyle = "#0a0d11"; g.beginPath(); g.arc(x + 0.5 * d, y, 5 * d, 0, 2 * Math.PI); g.fill();
+  g.fillStyle = sliceText(i); g.beginPath(); g.arc(x + 0.5 * d, y, 3.6 * d, 0, 2 * Math.PI); g.fill();
 }
 
 function drawWaveBase() {
@@ -685,12 +749,12 @@ function drawWaveBase() {
   if (!S.n) return;
   const Ly = layout(h), top = Ly.top, mh = P[MODE_HUE[S.mode]];
   // the splice lane's floor
-  g.fillStyle = "#0b0b0d"; g.fillRect(0, 0, w, Ly.lane);
+  g.fillStyle = "#0a0d11"; g.fillRect(0, 0, w, Ly.lane);
   g.fillStyle = C.line; g.fillRect(0, Ly.lane, w, Math.max(1, d));
   // the slices: the mode's colour and its partner's in turn
   for (let i = 0; i < S.cuts.length; i++) {
     const a = xOf(S.cuts[i], w), b = xOf(i + 1 < S.cuts.length ? S.cuts[i + 1] : S.n, w);
-    const col = PAIR[S.mode].fill[i % 2];
+    const col = sliceFill(i);
     g.fillStyle = rgba(col, S.trans ? 0.08 : 0.03); g.fillRect(a, top, b - a, h - top);
     g.fillStyle = rgba(col, S.trans ? 0.85 : 0.25); g.fillRect(a, top - 3 * d, b - a, 3 * d);
   }
@@ -720,16 +784,32 @@ function drawWaveBase() {
   });
   // every cut the mode can keep (ticks), the live ones (lines in the mode's colour, numbered in their slice's)
   g.fillStyle = rgba(mh[0], 0.5);
-  for (const c of S.all) g.fillRect(Math.round(xOf(c, w)), top - 9 * d, Math.max(1, d), 5 * d);
+  for (const c of S.all) g.fillRect(Math.round(xOf(c, w)), top - 10 * d, Math.max(1, d), 5 * d);
   g.globalAlpha = S.trans ? 1 : 0.35;
-  S.cuts.forEach((c, i) => cutDot(g, Math.round(xOf(c, w)), top - 7 * d, d, i));
-  g.font = `700 ${12 * d}px ${css("--f-mono")}`;
+  S.cuts.forEach((c, i) => cutDot(g, Math.round(xOf(c, w)), top - 8 * d, d, i));
+  g.font = `700 ${15 * d}px ${css("--f-mono")}`;
   g.textBaseline = "top";
-  S.cuts.forEach((c, i) => {
-    const x = Math.round(xOf(c, w));
-    g.fillStyle = mh[1]; g.fillRect(x, top, Math.max(1, d), h - top);
-    g.fillStyle = PAIR[S.mode].text[i % 2];
-    if (S.cuts.length <= 32 || i % 2 === 0) g.fillText(String(i + 1), x + 3 * d, top + 3 * d);
+  g.textAlign = "center";
+  S.cuts.forEach((c, i) => {   // (each cut's line in its slice's colour; each slice's number centred over it)
+    const x = Math.round(xOf(c, w)), xe = xOf(i + 1 < S.cuts.length ? S.cuts[i + 1] : S.n, w), lbl = String(i + 1);
+    g.fillStyle = sliceFill(i); g.fillRect(x, top, Math.max(1, d), h - top);
+    g.fillStyle = sliceText(i);
+    if (xe - x >= g.measureText(lbl).width + 8 * d) g.fillText(lbl, (x + xe) / 2, Ly.lane + 4 * d);
+    else {   // (a narrow slice: smaller, if that fits)
+      g.font = `700 ${10 * d}px ${css("--f-mono")}`;
+      if (xe - x >= g.measureText(lbl).width + 3 * d) g.fillText(lbl, (x + xe) / 2, Ly.lane + 7 * d);
+      g.font = `700 ${15 * d}px ${css("--f-mono")}`;
+    }
+  });
+  g.textAlign = "left";
+  // stereo detection: each channel's own borders (the slices' starts on its own hits), dots at its lane's top
+  if (S.r && S.chan) S.chan.forEach((list, c) => {
+    const y = Ly.lanes[c][0] + 6 * d;
+    for (const p of list) {
+      const x = Math.round(xOf(p, w)), i = sliceIdx(p);
+      g.fillStyle = "#0a0d11"; g.beginPath(); g.arc(x + 0.5 * d, y, 3.6 * d, 0, 2 * Math.PI); g.fill();
+      g.fillStyle = i < 0 ? P.cream[1] : sliceText(i); g.beginPath(); g.arc(x + 0.5 * d, y, 2.4 * d, 0, 2 * Math.PI); g.fill();
+    }
   });
   g.globalAlpha = 1;
   g.fillStyle = C.line;
@@ -745,8 +825,10 @@ function drawWave() {
   // the region: outside dimmed, its edges as handles
   const rs = S.slice ? S.slice[0] : S.s, re = S.slice ? S.slice[1] : S.e;
   const xs = xOf(rs, w), xe = xOf(re, w);
-  g.fillStyle = "rgba(7, 7, 9, 0.48)";
-  g.fillRect(0, top, xs, h - top); g.fillRect(xe, top, w - xe, h - top);
+  if (!S.slice) {   // (a slice played: its edges only, every slice's strength still in view)
+    g.fillStyle = "rgba(7, 9, 12, 0.48)";
+    g.fillRect(0, top, xs, h - top); g.fillRect(xe, top, w - xe, h - top);
+  }
   g.fillStyle = P.cream[1];
   for (const x of [xs, xe]) g.fillRect(Math.round(x) - d, Ly.lane + 2 * d, 2 * d, h - Ly.lane);
   g.beginPath(); g.moveTo(xs, Ly.lane + 2 * d); g.lineTo(xs + 10 * d, Ly.lane + 7 * d); g.lineTo(xs, Ly.lane + 12 * d); g.fill();
@@ -810,7 +892,7 @@ function headTags(g, tags, y, d, w) {
     let x0 = Math.max(x + 3 * d, right + 2 * d);
     if (x0 + tw > w) x0 = Math.max(0, x - 3 * d - tw);
     g.fillStyle = col; g.fillRect(x0, y - 7 * d, tw, 14 * d);
-    g.fillStyle = "#141316"; g.fillText(txt, x0 + 5 * d, y + 0.5 * d);
+    g.fillStyle = "#11161c"; g.fillText(txt, x0 + 5 * d, y + 0.5 * d);
     right = x0 + tw;
   }
 }
@@ -836,7 +918,7 @@ function drawZoom() {
     const s0 = S.cuts[i], s1 = i + 1 < S.cuts.length ? S.cuts[i + 1] : S.n;
     const x0 = (s0 - a) / span * w, x1 = (s1 - a) / span * w;
     if (x1 < 0 || x0 > w) continue;
-    g.fillStyle = rgba(PAIR[S.mode].fill[i % 2], S.trans ? 0.07 : 0.03); g.fillRect(Math.max(0, x0), top, Math.min(w, x1) - Math.max(0, x0), bot - top);
+    g.fillStyle = rgba(sliceFill(i), S.trans ? 0.07 : 0.03); g.fillRect(Math.max(0, x0), top, Math.min(w, x1) - Math.max(0, x0), bot - top);
   }
   {   // the TKEO envelope, as in the sample view (square root, against its highest), between its points linear;
       // in its slices' deeper colours
@@ -859,8 +941,8 @@ function drawZoom() {
     envLine(g, ys, fs, 1.3 * d);
   }
   g.strokeStyle = C.line; g.lineWidth = d; g.beginPath(); g.moveTo(0, mid); g.lineTo(w, mid); g.stroke();
-  g.fillStyle = P[MODE_HUE[S.mode]][1]; g.globalAlpha = S.trans ? 0.9 : 0.3;
-  for (const t of S.cuts) if (inView(t)) g.fillRect(Math.round(fx(t)), top, Math.max(1, d), bot - top);
+  g.globalAlpha = S.trans ? 0.9 : 0.3;
+  S.cuts.forEach((t, i) => { if (inView(t)) { g.fillStyle = sliceFill(i); g.fillRect(Math.round(fx(t)), top, Math.max(1, d), bot - top); } });
   S.cuts.forEach((t, i) => { if (inView(t)) cutDot(g, Math.round(fx(t)), top + 1 * d, d, i); });
   g.globalAlpha = 1;
   if (playing) {   // the leash: from the reference to the play head
@@ -1065,7 +1147,7 @@ function paintLen() {
   if (segs.children.length !== n) segs.innerHTML = "<i></i>".repeat(n);
   for (let i = 0; i < n; i++) {
     const f = n > 1 ? i / (n - 1) : 1;
-    segs.children[i].style.background = i < S.len ? mixHex("#5d5762", P.cream[1], 0.35 + 0.65 * f) : "";
+    segs.children[i].style.background = i < S.len ? mixHex("#566270", P.cream[1], 0.35 + 0.65 * f) : "";
   }
   $("lencap").style.left = `calc(22px + (100% - 44px) * ${((S.len - 0.5) / n).toFixed(4)})`;
   lenF.setAttribute("aria-valuemin", "1"); lenF.setAttribute("aria-valuemax", String(n)); lenF.setAttribute("aria-valuenow", String(S.len));
@@ -1246,13 +1328,25 @@ document.addEventListener("keydown", (e) => {   // (↑ ↓ through the samples,
   openEntry(libCur + (e.key === "ArrowDown" ? 1 : -1));
 });
 $("smooth").addEventListener("input", (e) => setSmoothing(Number(e.target.value)));
-$("smooth").addEventListener("dblclick", () => setSmoothing(POS_DEF));
+$("smooth").addEventListener("dblclick", () => setSmoothing(POS_START));
 window.addEventListener("resize", () => drawWaveBase());
 
 /* ---- MIDI: pads play slices (velocity the level), learned CCs move the controls, the clock's tempo, start and
    stop. Events act at the next audio quantum (2.7 ms) ---- */
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* (a private window) */ } } };
+
+/* light or dark: the header's switch, remembered here; the system's choice until it's used. (The screens stay dark) */
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("theme").textContent = t === "light" ? "Dark" : "Light";
+}
+applyTheme(store.get("kflab.theme", window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+$("theme").addEventListener("click", () => {
+  const t = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+  applyTheme(t);
+  store.set("kflab.theme", t);
+});
 const MIDI = { access: null, notes: store.get("kfl.notes", null), ccs: store.get("kfl.ccs", {}), learnPads: null, learnCC: false, target: null,
   held: -1, clock: { last: 0, ema: 0, bpm: 0, shown: 0 } };
 const NOTE_BASE = 36;   // (no pads learned: C1 plays slice 1, C#1 slice 2 ...)
@@ -1401,7 +1495,7 @@ listSinks().catch(() => {});
 }
 
 paintMode();
-setSmoothing(POS_DEF);
+setSmoothing(POS_START);
 renderLib();
 openEntry(0);
 requestAnimationFrame(frame);
