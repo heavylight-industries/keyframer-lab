@@ -41,7 +41,7 @@
 #include <stdint.h>
 
 #ifndef KF_EPS
-#define KF_EPS        33        /* the analyzer's threshold, int16 units (0.001 of full scale: "transparent") */
+#define KF_EPS        328       /* the analyzer's threshold, int16 units: 0.01 of full scale (the owner, 2026-10-25; 33, 0.001, before) */
 #endif
 #ifndef KF_MIN_FADE
 #define KF_MIN_FADE   48        /* the shortest crossfade, samples */

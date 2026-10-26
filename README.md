@@ -17,6 +17,9 @@ samples. Everything runs in the page; nothing is uploaded.
 - **The detector**: VOL (the loudest hits), GRID (even steps, each moved to the nearest transient) or RAND, THIN
   (how many transients the engine keeps as borders), Smoothing (the TKEO follower's cutoff) and Cut snap (how far a
   cut may move to a zero crossing).
+- **Keyframes**: the analyzer's threshold. A peak or trough becomes a keyframe only when it differs from the last
+  one by more than this; the unit runs 0.01 of full scale, so quiet passages and the noise floor get few keyframes
+  and the grains adapt to the material.
 - **The knobs**: STR (the reference's speed), TUNE (the play head's pitch, ±60 semitones), SIZE (K, the leash).
   Lock STR + TUNE to keep their ratio while slowing everything down to watch.
 
@@ -52,6 +55,11 @@ For each file it checks that:
 | `tools/` | the build and the check |
 
 The engine files come from the keyframer mod's tree; changes to the engine are made there first and copied here.
+
+## How it was made
+
+[docs/conversation.md](docs/conversation.md) is the conversation in which it was built, from the first brief to
+this repo: the owner's notes and Claude's replies, without the tool output.
 
 ## License
 

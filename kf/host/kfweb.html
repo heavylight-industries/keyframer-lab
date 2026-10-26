@@ -12,7 +12,7 @@
    ramp the page fills at start (--<hue>-0 lightest .. 4 deepest). */
 :root {
   color-scheme: dark;
-  --paper: #1b1a1e;       /* the page: graphite, a hint of plum */
+  --paper: #08080a;       /* the page: near-black, so the four areas stand off it */
   --well: #242328;        /* the deck's panels */
   --raised: #2e2c33;      /* boxes inside them */
   --line: #3a3840;
@@ -36,7 +36,7 @@
   --f-body: "Jost", "Futura", "Avenir Next", "Segoe UI", sans-serif;
   --f-mono: "Courier Prime", "Courier New", ui-monospace, monospace;
   --mode: var(--rose); --mode-0: #f0c3c9; --mode-3: #9a5a64; --mode-4: #6b3b43;
-  --bevel: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -2px 0 rgba(0, 0, 0, 0.35), 0 6px 16px rgba(0, 0, 0, 0.35);
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -2px 0 rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.6);
 }
 html, body { background: var(--paper); color: var(--text); }
 [hidden] { display: none !important; }
@@ -64,7 +64,7 @@ button, input { font: inherit; color: inherit; }
 
 /* the screens */
 .view { position: relative; background: var(--bg); border: 2px solid #0a080b; border-radius: 14px; overflow: hidden; touch-action: none;
-  box-shadow: inset 0 0 0 1px #2b2930, var(--bevel); }
+  box-shadow: inset 0 0 0 1px #34323a, var(--bevel); }
 .view canvas { display: block; width: 100%; }
 .view .tag { position: absolute; left: 14px; top: 9px; font: 700 12px/1 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; color: #bbb5bf; pointer-events: none; }
 .view .read { position: absolute; right: 14px; top: 9px; font: 400 13px/1 var(--f-mono); color: #d6d0d8; pointer-events: none; }
@@ -152,6 +152,7 @@ button, input { font: inherit; color: inherit; }
 .sbox .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .lvl { display: flex; align-items: center; gap: 14px; }
 .lvl input { accent-color: var(--cream); flex: 1; min-width: 0; }
+.lvl .cap { min-width: 96px; }   /* (the sliders start in line) */
 .foot { margin: 0; color: var(--faint); font-size: 13px; max-width: 104ch; }
 @media (max-width: 860px) {
   .stage { grid-template-columns: 1fr; }
@@ -221,6 +222,7 @@ button, input { font: inherit; color: inherit; }
         <button class="mk" type="button" data-v="3"><b>Rand</b><span>A random pick of the transients</span></button>
       </div>
       <div class="lvl"><span class="cap">Smoothing</span><input type="range" id="smooth" min="0" max="1" step="0.001" aria-label="TKEO smoothing: the detector's follower cutoff"><span class="sval" id="smoothval"></span></div>
+      <div class="lvl"><span class="cap">Keyframes</span><input type="range" id="eps" min="0" max="1" step="0.001" aria-label="Keyframe threshold: how far a peak or trough must differ from the last keyframe"><span class="sval" id="epsval"></span></div>
       <div class="lvl"><span class="cap">Cut snap</span><input type="range" id="zc" min="0" max="480" step="8" value="480" aria-label="Cut snap: how far the cut may move to a zero crossing"><span class="sval" id="zcval"></span></div>
       <div class="sboxes">
         <div class="sbox"><span class="cap">Splices</span><div class="stats" id="stats-a"></div></div>
@@ -343,8 +345,6 @@ const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${
 const step = (hex) => { const [L, Cc, H] = toOklch(hex); return fromOklch(L - 0.05, Cc * 0.95, H + 55); };
 const PAIR = {};
 for (const m of [1, 2, 3]) PAIR[m] = { fill: [P[MODE_HUE[m]][1], step(P[MODE_HUE[m]][1])], text: [P[MODE_HUE[m]][0], step(P[MODE_HUE[m]][0])] };
-// a splice's arc: the leash's (the reference's colour), onto a transient (the mode's), at a border, forced at an edge
-const SPLICE = (kind) => (kind === 3 ? P.rust[0] : kind === 2 ? P[MODE_HUE[S.mode]][0] : kind === 1 ? P.cream[1] : P.rose[0]);
 
 const bytes = Uint8Array.from(atob(WASM_B64), (c) => c.charCodeAt(0));
 const coreSrc = $("core-src").textContent;
@@ -360,7 +360,7 @@ const S = {
   l: null, r: null, n: 0, name: "", env: null, envMax: 1,
   all: [], cuts: [], mode: 1, thin: 16, thinMax: 1, trans: true,
   s: 0, e: 0, slice: null,
-  str: 0.5, tune: 0, size: 60, sizep: (60 / 120) ** (1 / 0.6), play: 3,   // (str, sizep: knob positions; the stretch 4 p |p|, SIZE 120 p^0.6)
+  eps: 0, str: 0.5, tune: 0,   // (eps: the unit's, set at start) size: 60, sizep: (60 / 120) ** (1 / 0.6), play: 3,   // (str, sizep: knob positions; the stretch 4 p |p|, SIZE 120 p^0.6)
   live: null, trails: [], rate: { t: 0, splices: 0, keys: 0, sps: 0, kps: 0 },
   zoom: { auto: true, span: 0, hold: 0, t: 0, at: null },   // (at: where a drag left the view, nothing playing)
 };
@@ -416,7 +416,7 @@ function setSample(l, r, n, name) {
   S.s = 0; S.e = n; S.slice = null; S.zoom.span = S.zoom.hold = 0; S.zoom.at = null;
   post({ type: "stop" });
   post({ type: "sample", l: S.l, r: S.r, n });
-  for (const [id, v] of [[0, strOf(S.str)], [1, S.tune], [2, S.size], [3, S.play], [6, S.trans ? 1 : 0]]) post({ type: "set", id, v });
+  for (const [id, v] of [[0, strOf(S.str)], [1, S.tune], [2, S.size], [3, S.play], [6, S.trans ? 1 : 0], [8, S.eps]]) post({ type: "set", id, v });
   updateThin(true);
   setPlaying(false);
 }
@@ -462,6 +462,21 @@ function setSmoothing(pos) {
   if (!S.n || smoothBusy) return;
   smoothBusy = true;
   requestAnimationFrame(() => { analyse(); updateThin(false); smoothBusy = false; });
+}
+
+/* the keyframe threshold (the engine's eps, int16 units): a peak or trough becomes a keyframe when it differs from the
+   last one on its side by more than this. The unit's KF_EPS (kf.h, read from the engine); the slider squared to 0.05
+   of full scale (1638) */
+const EPS_DEF = A.kw_eps_default(), EPS_MAX = 1638;
+const epsOf = (p) => Math.round(EPS_MAX * p * p), epsPos = (e) => Math.sqrt(e / EPS_MAX);
+function setEps(pos) {
+  let e = epsOf(pos);
+  if (Math.abs(e - EPS_DEF) <= 2) e = EPS_DEF;
+  S.eps = e;
+  $("eps").value = String(e === EPS_DEF ? epsPos(EPS_DEF) : pos);
+  const fs = e / 32768, db = e > 0 ? `${(20 * Math.log10(fs)).toFixed(0)} dB` : "every turn";
+  $("epsval").textContent = `${fs.toFixed(fs < 0.01 ? 4 : 3)} · ${db}${e === EPS_DEF ? " · the unit's" : ""}`;
+  post({ type: "set", id: 8, v: e });
 }
 
 /* cut snap: how far the detector may move a cut from its onset to a zero crossing (TK_ZC_BACK before it, TK_ZC_FWD
@@ -598,6 +613,17 @@ function envLine(g, ys, fs, lw) {
   g.stroke();
 }
 
+/* a splice's arc: the colour of the slice it lands in; a jump onto a transient (it lands KF_TRANS_FADE, 64 samples,
+   before the cut, so the attack plays whole) the colour of the slice that cut starts: the next one */
+function arcCol(t) {
+  if (t.kind === 2 && S.trans && S.cuts.length > 1) {
+    let best = -1, bd = 129;
+    S.cuts.forEach((c, i) => { const dd = Math.abs(c - t.to); if (dd < bd) { bd = dd; best = i; } });
+    if (best >= 0) return PAIR[S.mode].text[best % 2];
+  }
+  return traceCol(t.to);
+}
+
 /* the trace's colour at frame f: its slice's (the lighter of the pair), cream with no transients */
 function sliceIdx(f) {
   const c = S.cuts;
@@ -703,11 +729,13 @@ function drawWave() {
   S.trails.forEach((t, j) => {
     const age = (now - t.at) / LIFE, a = (1 - age) ** 1.6 * 0.95, x0 = xOf(t.from, w), x1 = xOf(t.to, w);
     const hgt = Math.min(Ly.lane - 10 * d, 10 * d + Math.sqrt(Math.abs(x1 - x0) / d) * 7 * d);
-    const col = SPLICE(t.kind), fresh = j === last && age < 0.2;
+    const col = arcCol(t), fresh = j === last && age < 0.2;
     g.strokeStyle = col; g.globalAlpha = a;
     g.lineWidth = (fresh ? 2.6 : 1.4) * d;
     g.shadowColor = col; g.shadowBlur = fresh ? 8 * d : 0;
+    g.setLineDash(t.kind === 3 ? [5 * d, 4 * d] : []);   // (a border splice dashed)
     g.beginPath(); g.moveTo(x0, base); g.quadraticCurveTo((x0 + x1) / 2, base - hgt * 2, x1, base); g.stroke();
+    g.setLineDash([]);
     g.shadowBlur = 0;
     if (fresh) { g.fillStyle = col; g.beginPath(); g.arc(x1, base, 2.6 * d, 0, 2 * Math.PI); g.fill(); }
   });
@@ -1146,10 +1174,13 @@ document.addEventListener("keydown", (e) => {   // (↑ ↓ through the samples,
 $("smooth").addEventListener("input", (e) => setSmoothing(Number(e.target.value)));
 $("smooth").addEventListener("dblclick", () => setSmoothing(POS_DEF));
 $("zc").addEventListener("input", (e) => setSnap(Number(e.target.value)));
+$("eps").addEventListener("input", (e) => setEps(Number(e.target.value)));
+$("eps").addEventListener("dblclick", () => setEps(epsPos(EPS_DEF)));
 $("zc").addEventListener("dblclick", () => setSnap(ZC_DEF));
 window.addEventListener("resize", () => drawWaveBase());
 
 paintMode();
+setEps(epsPos(EPS_DEF));
 setSnap(ZC_DEF);
 setSmoothing(POS_DEF);
 renderLib();

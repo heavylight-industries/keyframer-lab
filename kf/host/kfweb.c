@@ -127,7 +127,7 @@ static int32_t  tn_live, trans_on = 1;
 
 /* the controls, and what they make */
 static float    c_str = 1.0f, c_tune = 0.0f, c_size = 60.0f, c_gain = 1.0f / 32768.0f;
-static int32_t  c_play = 3, c_s, c_e;
+static int32_t  c_play = 3, c_s, c_e, c_eps = KF_EPS;
 static float    stretch = 1.0f, pitch = 1.0f;
 static int32_t  leash = 64, once = 1;
 
@@ -350,7 +350,8 @@ void kw_set_cuts(int32_t n)
 /* ---- the controls and the note ------------------------------------------ */
 
 /* 0 STR (-4 .. 4, the stretch), 1 TUNE (semitones), 2 SIZE (0 .. 120), 3 PLAY (0 rev once, 1 rev loop, 2 fwd
-   loop, 3 fwd once), 4 the region's start, 5 its end (frames), 6 transients on (1) / off (0), 7 the gain */
+   loop, 3 fwd once), 4 the region's start, 5 its end (frames), 6 transients on (1) / off (0), 7 the gain, 8 the
+   keyframe threshold (int16 units; the unit's KF_EPS, 33) */
 void kw_set(int32_t id, float x)
 {
     int32_t c;
@@ -369,6 +370,7 @@ void kw_set(int32_t id, float x)
         }
         break;
     case 7: c_gain = x; break;
+    case 8: c_eps = (int32_t)x; break;
     }
     derive();
 }
@@ -478,7 +480,7 @@ int32_t kw_render(int32_t frames)
         p.k = leash;
         p.s = s;
         p.e = e;
-        p.eps = KF_EPS;
+        p.eps = c_eps;
         p.max_fade = 0;
         p.gain = c_gain;
         edge = (slice_note || once) ? 1 : 0;
@@ -541,6 +543,7 @@ int32_t  kw_splicing(void) { return kv[0].splicing; }
 float    kw_fade_t(void) { return kv[0].t; }
 int32_t  kw_playing(void) { return playing; }
 uint32_t kw_clock(void) { return kw_frames; }
+int32_t  kw_eps_default(void) { return KF_EPS; }   /* (the unit's keyframe threshold, for the page's control) */
 int32_t  kw_leash(void) { return leash; }
 float    kw_stretch(void) { return stretch; }
 float    kw_pitch(void) { return pitch; }
