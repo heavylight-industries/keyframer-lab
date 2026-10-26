@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 </head>
 <body>
-<title>Keyframe Lab</title>
+<title>Frame Lab</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,14 +87,14 @@ html, body { background: var(--paper); color: var(--text); }
 body { font: 400 15px/1.5 var(--f-body); }
 .app { max-width: 1320px; margin: 0 auto; padding-block: 18px 30px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  display: grid; gap: 14px; }
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 button, input { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
 
 /* header */
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
-.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-right: auto; min-width: 0; }
-.brand h1 { font: 700 30px/1 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; margin: 0; color: var(--title); }
+.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-right: auto; min-width: 0; flex-shrink: 0; }
+.brand h1 { font: 700 30px/1 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; margin: 0; color: var(--title); white-space: nowrap; }
 .brand span { font: 500 12px/1.2 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
 .btn { background: var(--raised); border: 1px solid var(--track); border-radius: 9px; padding: 8px 18px; cursor: pointer; box-shadow: var(--bevel);
   font: 700 13px/1.2 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--text); }
@@ -339,7 +339,7 @@ body[data-lib="open"]::after { content: ""; position: fixed; inset: 0; z-index: 
 
 <div class="app" id="app">
   <header class="bar">
-    <div class="brand"><h1>Keyframe Lab</h1></div>
+    <div class="brand"><h1>Frame Lab</h1></div>
     <button class="samplebtn" id="libbtn" type="button" aria-expanded="false" aria-controls="lib"><span class="sbk">Sample</span><span class="file" id="file">Demo loop (synthesized)</span><span class="caret" aria-hidden="true">▾</span></button>
     <span class="cpu" id="cpu" title="The engine's render time against the audio it made (the audio thread); the page's drawing against each frame">audio – · drawing –</span>
     <input type="file" id="pickdir" webkitdirectory multiple hidden>
@@ -349,10 +349,9 @@ body[data-lib="open"]::after { content: ""; position: fixed; inset: 0; z-index: 
     <button class="btn" id="theme" type="button" aria-label="Light or dark">Light</button>
     <button class="btn go" id="play" type="button" aria-pressed="false">Play</button>
   </header>
-  <details class="how"><summary>How to read it</summary>
-  <p class="note" id="note">The <b class="k-ref">reference</b> walks through the sample at STR's rate; the <b class="k-play">play head</b> reads it at TUNE's rate.
-    When the play head drifts more than K <b class="k-kf">keyframes</b> (the sample's peaks and troughs) from the reference, it crossfades back to it: a splice, drawn as an arc above the sample.
-    <b>Transients</b> are borders: the play head waits before one until the reference crosses it, so every hit plays once. Click a slice to play it; drag the region's edges.</p></details>
+  <!-- TODO (heavylight): "How to read it" goes here, styled as before:
+       <details class="how"><summary>How to read it</summary><p class="note">...</p></details>
+       (the .how rules are still in the style sheet) -->
   <p class="warn" id="warn" hidden></p>
 
   <aside class="lib" id="lib" aria-label="Samples"><div class="libhead"><span class="cap">Samples</span><button class="libx" id="libx" type="button" aria-label="Close">×</button></div><div class="libl" id="libl"></div>
