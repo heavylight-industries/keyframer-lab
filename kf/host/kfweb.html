@@ -128,6 +128,11 @@ button, input { font: inherit; color: inherit; }
 #zoom { height: 170px; }
 .zoomctl { position: absolute; right: 14px; bottom: 9px; display: flex; gap: 8px; align-items: center; font: 400 12px/1 var(--f-mono); color: var(--screen-dim); }
 .zoomctl button { background: transparent; border: 1px solid var(--screen-line); border-radius: 6px; padding: 3px 8px; cursor: pointer; font: 600 10px/1 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--screen-dim); }
+.legend { display: inline-flex; gap: 12px; margin-right: 6px; padding: 4px 9px; border-radius: 7px; background: rgba(10, 13, 17, 0.78); box-shadow: inset 0 0 0 1px var(--screen-line); font: 600 10px/1 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--screen-dim); }
+.legend > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.fl { display: inline-block; width: 12px; height: 9px; clip-path: polygon(0 0, 100% 0, 71% 50%, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0 1px, var(--c) 1px calc(100% - 1px), rgba(0, 0, 0, 0.5) calc(100% - 1px)); }
+@media (max-width: 720px) { .legend { display: none; } }
 .zoomctl button[aria-pressed="true"] { color: var(--cream); border-color: var(--screen-dim); }
 .drop { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(17, 16, 19, 0.9); border: 2px dashed var(--green); border-radius: 12px;
   font: 700 18px/1 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--green); }
@@ -279,7 +284,7 @@ button, input { font: inherit; color: inherit; }
   <div class="view" id="zoomview">
     <canvas id="zoom"></canvas>
     <span class="tag">Zoomed in</span><span class="read" id="zoomread"></span>
-    <div class="zoomctl"><span id="zoomms"></span><button type="button" id="zoomauto" aria-pressed="true">Auto zoom</button></div>
+    <div class="zoomctl"><span class="legend" aria-label="Legend"><span><i class="fl" style="--c: var(--rose-0)"></i>Ref</span><span><i class="fl" style="--c: var(--powder-0)"></i>Play</span><span><i class="fl" style="--c: var(--cream-1)"></i>Xfade</span><span><i class="fl" style="--c: var(--rust-0)"></i>Splice at K</span></span><span id="zoomms"></span><button type="button" id="zoomauto" aria-pressed="true">Auto zoom</button></div>
   </div>
   </div>
   </div>
@@ -953,19 +958,23 @@ function zoomSpan(dist, playing) {
   return Z.span;
 }
 
-/* small labels on the heads (REF, PLAY, XFADE: the incoming head of a crossfade, dotted), pushed apart when they meet */
+/* the heads' flags (REF, PLAY, XFADE, SPLICE AT K: the legend names them by colour): a small bevelled swallowtail on
+   each pole, stacked where they meet; one flips left at the right edge */
+function flag(g, x, y, col, d, left) {
+  const fw = 12 * d, fh = 9 * d, s = left ? -1 : 1, tip = x + s * fw, notch = x + s * (fw - 3.5 * d);
+  g.beginPath(); g.moveTo(x, y); g.lineTo(tip, y); g.lineTo(notch, y + fh / 2); g.lineTo(tip, y + fh); g.lineTo(x, y + fh); g.closePath();
+  g.fillStyle = col; g.fill();
+  g.lineWidth = d;
+  g.strokeStyle = "rgba(255, 255, 255, 0.55)"; g.beginPath(); g.moveTo(x, y + 0.5 * d); g.lineTo(tip - s * 0.8 * d, y + 0.5 * d); g.stroke();
+  g.strokeStyle = "rgba(0, 0, 0, 0.5)"; g.beginPath(); g.moveTo(x, y + fh - 0.5 * d); g.lineTo(tip - s * 0.8 * d, y + fh - 0.5 * d); g.stroke();
+}
 function headTags(g, tags, y, d, w) {
-  g.font = `600 ${10 * d}px ${css("--f-display")}`;
-  g.textBaseline = "middle";
   tags.sort((p, q) => p[0] - q[0]);
-  let right = -1e9;
-  for (const [x, col, txt] of tags) {
-    const tw = g.measureText(txt).width + 10 * d;
-    let x0 = Math.max(x + 3 * d, right + 2 * d);
-    if (x0 + tw > w) x0 = Math.max(0, x - 3 * d - tw);
-    g.fillStyle = col; g.fillRect(x0, y - 7 * d, tw, 14 * d);
-    g.fillStyle = "#11161c"; g.fillText(txt, x0 + 5 * d, y + 0.5 * d);
-    right = x0 + tw;
+  let px = -1e9, level = 0;
+  for (const [x, col] of tags) {
+    level = x - px < 14 * d ? level + 1 : 0;
+    flag(g, x, y - 4.5 * d + level * 11 * d, col, d, x + 13 * d > w);
+    px = x;
   }
 }
 
@@ -1060,12 +1069,11 @@ function drawZoom() {
     // the keyframes that count: the ones between this voice's heads (past K of them, a splice)
     let between = 0;
     const lo = Math.min(v.ref, v.play), hi = Math.max(v.ref, v.play), near = hi - lo < S.n / 2;
-    const rr = Math.max(1.6, Math.min(3.2, 2400 / span)) * d;
     for (const kf of v.keys) {
       const inside = near && kf > lo && kf < hi;
       if (inside) between++;
       if (!inView(kf)) continue;
-      if (inside) { g.fillStyle = P.green[0]; g.beginPath(); g.arc(fx(kf), mid - ch[kf] * sc, rr, 0, 2 * Math.PI); g.fill(); }
+      if (inside) { g.fillStyle = rgba(C.ink, 0.38); g.fillRect(Math.round(fx(kf)), r1 - 6 * d, Math.max(1, d), 5 * d); }
     }
     // the leash's reach: the K-th keyframe past the reference on the play head's side, where it splices back
     // (sparse material can splice sooner: the sparse leash)

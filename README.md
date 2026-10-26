@@ -19,9 +19,10 @@ samples. Everything runs in the page; nothing is uploaded.
   are the shared slices a click or a pad plays. Each channel's voice is drawn apart too: its heads in its lane, its
   splices as arcs (the left's rising from the splice lane's floor, the right's hanging from its top), and a row of its
   own in the zoomed view.
-- **Zoomed in**: the heads up close (REF, PLAY, and XFADE, the incoming head of a crossfade), with the keyframes
-  (the sample's peaks and troughs) between them, shaded. When more than K of them lie between the heads, the play
-  head splices: the dotted SPLICE AT K line marks where. Drag it to look around while nothing plays.
+- **Zoomed in**: the heads up close, each a small flag on its line (the legend names them: the reference, the play
+  head, the incoming head of a crossfade), with the keyframes (the sample's peaks and troughs) between them, ticked on
+  the floor and shaded. When more than K of them lie between the heads, the play head splices: the dotted line with
+  its own flag marks where. Drag it to look around while nothing plays.
 - **Light or dark**: the switch in the header (the screens stay dark).
 - **Load**: the header's readout, the engine's render time against the audio it made (the audio thread), and the
   page's drawing against each frame.
