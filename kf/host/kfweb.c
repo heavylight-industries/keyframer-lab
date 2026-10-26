@@ -161,8 +161,8 @@ static uint32_t kw_frames;   /* output frames since the page began */
 /* the splice log: from, to (the play head's and the incoming head's places, wrapped), kind (0 the leash,
    1 forced at the region's edge, 2 a transient jump, 3 a border), the output frame (the block's) */
 static int32_t  slog[KW_LOG * 4];
-static uint32_t slog_n, seen_tj, seen_b, seen_f;
-static int32_t  keys[KW_KEYS];
+static uint32_t slog_n, seen_tj[2], seen_b[2], seen_f[2];
+static int32_t  keys[2][KW_KEYS];   /* each voice's keyframes for the picture (kw_keys: the left's) */
 
 /* 2^x for |x| <= 8 or so (kf/sharc/dt2.c kf_exp2, dt2-capicola's gen_exp2) */
 static float kw_exp2(float x)
@@ -196,17 +196,18 @@ static void kw_splice(const void *vp)
 {
     const kf_voice *v = vp;
     int32_t kind = 0, *e;
-    if (v != &kv[0]) return;
-    if (v->n_tjump != seen_tj) kind = 2;
-    else if (v->n_border != seen_b) kind = 3;
-    else if (v->n_forced != seen_f) kind = 1;
-    seen_tj = v->n_tjump;
-    seen_b = v->n_border;
-    seen_f = v->n_forced;
+    const int32_t c = (v == &kv[1]) ? 1 : 0;   /* (both voices log: the kind's bits 4.. its channel) */
+    if (c == 1 && n_ch < 2) return;
+    if (v->n_tjump != seen_tj[c]) kind = 2;
+    else if (v->n_border != seen_b[c]) kind = 3;
+    else if (v->n_forced != seen_f[c]) kind = 1;
+    seen_tj[c] = v->n_tjump;
+    seen_b[c] = v->n_border;
+    seen_f[c] = v->n_forced;
     e = slog + 4 * (slog_n & (KW_LOG - 1));
     e[0] = v->play.ri;
     e[1] = v->temp.ri;
-    e[2] = kind;
+    e[2] = kind | (c << 4);
     e[3] = (int32_t)kw_frames;
     slog_n++;
 }
@@ -245,7 +246,7 @@ float   *kw_out(int32_t ch) { return out[ch ? 1 : 0]; }
 int32_t *kw_log(void) { return slog; }
 uint32_t kw_log_n(void) { return slog_n; }
 int32_t  kw_log_size(void) { return KW_LOG; }
-int32_t *kw_keybuf(void) { return keys; }
+int32_t *kw_keybuf(void) { return keys[0]; }
 
 /* a new sample, already in kw_pcm (stereo 0: the left channel only): the note stopped, the region the whole */
 void kw_sample(int32_t n, int32_t stereo)
@@ -487,9 +488,11 @@ void kw_trig(int32_t slice)
         fade[c] = 0;
         since_wrap[c] = slice ? 0 : 1 << 20;
     }
-    seen_tj = kv[0].n_tjump;
-    seen_b = kv[0].n_border;
-    seen_f = kv[0].n_forced;
+    for (c = 0; c < 2; c++) {
+        seen_tj[c] = kv[c].n_tjump;
+        seen_b[c] = kv[c].n_border;
+        seen_f[c] = kv[c].n_forced;
+    }
     slice_note = slice;
     playing = 1;
 }
@@ -641,17 +644,31 @@ uint32_t kw_stat(int32_t i)
     return 0;
 }
 
-/* the keyframes the left voice holds now (its window around the heads; at most KW_KEYS of them, centred on the
-   reference's), wrapped frames, in time order, into kw_keybuf */
-int32_t kw_keys(void)
+/* the keyframes voice c holds now (its window around the heads; at most KW_KEYS of them, centred on the
+   reference's), wrapped frames, in time order, into its keybuf (kw_keys: the left voice's, into kw_keybuf) */
+int32_t kw_vkeys(int32_t c)
 {
-    const kf_voice *v = &kv[0];
+    const kf_voice *v = &kv[c & 1];
+    int32_t *out = keys[c & 1];
     int32_t k = 0, m = v->ref.m - KW_KEYS / 2;
     if (m > v->base + v->count - KW_KEYS) m = v->base + v->count - KW_KEYS;
     if (m < v->base) m = v->base;
     while (m + k < v->base + v->count && k < KW_KEYS) {
-        keys[k] = kwrap(v, v->ring[(m + k) & v->mask]);
+        out[k] = kwrap(v, v->ring[(m + k) & v->mask]);
         k++;
     }
     return k;
 }
+int32_t  kw_keys(void) { return kw_vkeys(0); }
+int32_t *kw_vkeybuf(int32_t c) { return keys[c & 1]; }
+
+/* each voice's heads for the picture (stereo: the right's apart): 0 the reference, 1 the play head, 2 the incoming */
+int32_t kw_vhead(int32_t c, int32_t which)
+{
+    const kf_voice *v = &kv[c & 1];
+    if (which == 0) return v->ref.ri;
+    if (which == 1) return v->play.ri;
+    return v->temp.ri;
+}
+int32_t kw_vsplicing(int32_t c) { return kv[c & 1].splicing; }
+float   kw_vfade_t(int32_t c) { return kv[c & 1].t; }

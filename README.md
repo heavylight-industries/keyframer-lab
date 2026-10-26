@@ -16,7 +16,9 @@ samples. Everything runs in the page; nothing is uploaded.
   apart, as on the unit (elemod's stereo detection): each lane's slices are THIN's picks from its own channel's
   transients, in the same mode and number (as the unit's WERP+ picks THIN per channel), and its voice plays those
   borders; in RAND, or wherever the channels' hits differ, the two lanes' sections don't line up. The numbers on top
-  are the shared slices a click or a pad plays.
+  are the shared slices a click or a pad plays. Each channel's voice is drawn apart too: its heads in its lane, its
+  splices as arcs (the left's rising from the splice lane's floor, the right's hanging from its top), and a row of its
+  own in the zoomed view.
 - **Zoomed in**: the heads up close (REF, PLAY, and XFADE, the incoming head of a crossfade), with the keyframes
   (the sample's peaks and troughs) between them, shaded. When more than K of them lie between the heads, the play
   head splices: the dotted SPLICE AT K line marks where. Drag it to look around while nothing plays.
