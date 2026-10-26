@@ -478,7 +478,7 @@ function makeCore(k) {
     const nk = k.kw_keys();
     return {
       ref: k.kw_head(0), play: k.kw_head(1), temp: k.kw_head(2), splicing: k.kw_splicing(), t: k.kw_fade_t(),
-      playing: k.kw_playing(), clock: k.kw_clock() >>> 0, leash: k.kw_leash(),
+      playing: k.kw_playing(), clock: k.kw_clock() >>> 0, leash: k.kw_leash(), pitch: k.kw_pitch(), stretch: k.kw_stretch(),
       stats: [0, 1, 2, 3, 4, 5].map((i) => k.kw_stat(i) >>> 0),
       keys: new Int32Array(buf(), k.kw_keybuf(), nk).slice(), splices,
       v: [0, 1].map((c) => ({ ref: k.kw_vhead(c, 0), play: k.kw_vhead(c, 1), temp: k.kw_vhead(c, 2), splicing: k.kw_vsplicing(c),
@@ -1148,11 +1148,13 @@ function drawZoom() {
       if (!inView(kf)) continue;
       if (inside) { g.fillStyle = rgba(C.ink, 0.38); g.fillRect(Math.round(fx(kf)), r1 - 6 * d, Math.max(1, d), 5 * d); }
     }
-    // the leash's reach: the K-th keyframe past the reference on the play head's side, where it splices back
-    // (sparse material can splice sooner: the sparse leash)
+    // the leash's reach: the K-th keyframe past the reference on the side the gap is heading (the play head faster
+    // than the reference: ahead; slower or reversed: behind), where it splices back. (Not the play head's side now:
+    // just after a transient jump it sits a moment behind the reference, and the flag flashed far behind.) Sparse
+    // material can splice sooner: the sparse leash
     let reach = null;
     if (near && v.keys.length) {
-      const fwd = v.play >= v.ref;
+      const fwd = m.pitch != null ? m.pitch - m.stretch >= 0 : v.play >= v.ref;
       let i = 0;
       while (i < v.keys.length && v.keys[i] <= v.ref) i++;   // (the first keyframe past the reference)
       const j = fwd ? i + m.leash - 1 : i - m.leash;
