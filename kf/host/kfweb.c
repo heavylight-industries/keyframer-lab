@@ -127,16 +127,17 @@ static float    lev[TK_SLICES + 4];   /* each slice's strongest transient (the e
 static int32_t  tpl[TK_SLICES + 4];   /* the combined list (the slices' starts) */
 static int32_t  tn_live, trans_on = 1;
 
-/* stereo detection (as the unit, elemod 420e6bc, dt2.c tk_chan_pass / kf_bord_chan): a stereo sample's channels
-   analysed apart too; each voice's borders are the slices' starts, each moved onto its own channel's nearest
-   transient within KW_CHAN_SNAP, or dropped (a hit the other channel has and this one hasn't: run through). The
-   slices stay the combined analysis's */
-#define KW_CHAN_SNAP 960   /* 20 ms (dt2.c's KF_CHAN_SNAP) */
+/* stereo detection (the unit's, elemod 420e6bc, dt2.c tk_chan_pass): a stereo sample's channels analysed apart too,
+   each its own RAND draw; each channel's slices THIN's picks from its own transients, in the combined grid's mode
+   and N (as WERP+ picks THIN per channel, dt2.c), so in RAND, or wherever the channels' hits differ, the left's and
+   the right's sections don't line up. Each voice's borders are its channel's. The slices a click or a pad plays
+   stay the combined analysis's */
 static tk_state cst;
 static tk_event chev[TK_MAX_EV];
 static tk_cache chcache[2];
 static int32_t  chcuts[2][TK_SLICES + 4];   /* kw_thin's per channel (the page), or the page's into the audio thread's */
 static int32_t  chn[2];
+static float    chlev[2][TK_SLICES + 4];    /* each channel's slices' levels (its peaks' heights there) */
 static int32_t  tplc[2][TK_SLICES + 4];     /* each voice's list (kf_voice tp) */
 static int32_t  tnc[2];
 
@@ -360,29 +361,27 @@ int32_t kw_thin(int32_t mode, int32_t n)
             e++;
         }
     }
-    {   /* each channel's borders: the cuts on its own hits (dt2.c kf_bord_chan); a mono sample's the cuts */
+    {   /* each channel's slices: THIN's picks from its own transients (a mono sample's: the cuts) */
         int32_t c;
         for (c = 0; c < 2; c++) {
-            const tk_cache *cc = &chcache[c];
-            int32_t j = 0, m = 0, last = -1, i;
+            tk_cache *cc = &chcache[c];
+            int32_t gc, e = 0, sl = 0;
             if (n_ch < 2) {
                 k = 0;
-                while (k < got) { chcuts[c][k] = cuts[k]; k++; }
+                while (k < got) { chcuts[c][k] = cuts[k]; chlev[c][k] = lev[k]; k++; }
                 chn[c] = got;
                 continue;
             }
-            for (k = 0; k < got; k++) {
-                const int32_t p = cuts[k];
-                int32_t best = -1, bd = KW_CHAN_SNAP + 1;
-                while (j < cc->m && cc->pos[j] < p - KW_CHAN_SNAP) j++;
-                for (i = j; i < cc->m && cc->pos[i] <= p + KW_CHAN_SNAP; i++) {
-                    int32_t d = cc->pos[i] - p;
-                    if (d < 0) d = -d;
-                    if (d < bd) { bd = d; best = cc->pos[i]; }
-                }
-                if (best >= 0 && best != last) { chcuts[c][m++] = best; last = best; }
+            cc->mode = cache.mode;     /* (the combined grid's mode and N: dt2.c's WERP+ THIN) */
+            cc->slices = cache.slices;
+            gc = tk_cache_cuts(cc, n, reg);
+            for (k = 0; k < gc; k++) { chcuts[c][k] = reg[k]; chlev[c][k] = 0.0f; }
+            chn[c] = gc;
+            while (e < cc->m) {   /* (its levels: the highest peak from each of its cuts to the next) */
+                while (sl + 1 < gc && cc->pos[e] >= chcuts[c][sl + 1]) sl++;
+                if (cc->pos[e] >= chcuts[c][sl] && cc->val[e] > chlev[c][sl]) chlev[c][sl] = cc->val[e];
+                e++;
             }
-            chn[c] = m;
         }
     }
     return got;
@@ -424,6 +423,7 @@ void kw_set_chan_cuts(int32_t c, int32_t n)
     if (playing) ktfind(&kv[c]);
 }
 int32_t *kw_chan_cuts(int32_t c) { return chcuts[c & 1]; }
+float   *kw_chan_levels(int32_t c) { return chlev[c & 1]; }
 int32_t  kw_chan_n(int32_t c) { return chn[c & 1]; }
 
 /* ---- the controls and the note ------------------------------------------ */

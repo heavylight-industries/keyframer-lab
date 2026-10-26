@@ -13,11 +13,16 @@ samples. Everything runs in the page; nothing is uploaded.
   at TUNE's rate. Each splice (the play head crossfading back to the reference) draws an arc in the lane above.
   Slices alternate two colours, each as bright as its loudest hit (the detector's peak there), so the strong and
   the soft hits read at a glance; a dot marks each slice THIN keeps. A stereo sample's channels are also analysed
-  apart, as on the unit (elemod's stereo detection): each channel's voice takes the slices' starts on its own hits
-  (within 20 ms, else none: a hit only the other side has runs through), shown as dots on its lane.
-- **Zoomed in**: the heads up close, with the keyframes (the sample's peaks and troughs) between them. When more
-  than K of them lie between the heads, the play head splices. Drag it to look around while nothing plays.
+  apart, as on the unit (elemod's stereo detection): each lane's slices are THIN's picks from its own channel's
+  transients, in the same mode and number (as the unit's WERP+ picks THIN per channel), and its voice plays those
+  borders; in RAND, or wherever the channels' hits differ, the two lanes' sections don't line up. The numbers on top
+  are the shared slices a click or a pad plays.
+- **Zoomed in**: the heads up close (REF, PLAY, and XFADE, the incoming head of a crossfade), with the keyframes
+  (the sample's peaks and troughs) between them, shaded. When more than K of them lie between the heads, the play
+  head splices: the dotted SPLICE AT K line marks where. Drag it to look around while nothing plays.
 - **Light or dark**: the switch in the header (the screens stay dark).
+- **Load**: the header's readout, the engine's render time against the audio it made (the audio thread), and the
+  page's drawing against each frame.
 - **The detector**: VOL (the loudest hits), GRID (even steps, each moved to the nearest transient) or RAND, THIN
   (how many transients the engine keeps as borders), LEN (how many slices a clicked slice or a pad plays, as the
   Digitakt's SLICE machine) and Smoothing (the TKEO follower's cutoff; 46 Hz to start, the unit's 25.6 Hz a snap point).

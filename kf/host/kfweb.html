@@ -25,7 +25,9 @@
   --title: #dccaa8;       /* the title: beige */
   --knob-lbl: #f4f1ea;
   --on-light: #1a1f26;    /* text on a light key (a mode's, cream) */
-  --slot: #10141a;        /* THIN's and LEN's empty steps */
+  --slot: #2a333e;        /* THIN's and LEN's empty steps (raised in their dark well) */
+  --inset-bg: #10151b; --inset-line: #3c4857;   /* the deck's wells: the stat boxes, the faders' tracks */
+  --inset-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.025), 0 1px 0 rgba(255, 255, 255, 0.06);
   /* the deck's boxes: moulded plastic (a fine matte grain, lit from above) in a thin brushed-metal trim */
   --well-hi: #252c35; --well-lo: #1a1f26;
   --trim-a: #66768a; --trim-b: #29323c; --grain: 0.10;
@@ -66,7 +68,9 @@
   --faint: #6b7682;
   --title: #3a5674;
   --knob-lbl: #1d242c;
-  --slot: #a9b3be;
+  --slot: #c2c9d1;
+  --inset-bg: #f0f2f5; --inset-line: #98a4b0;
+  --inset-shadow: inset 0 2px 6px rgba(30, 40, 52, 0.20), 0 1px 0 rgba(255, 255, 255, 0.7);
   --well-hi: #e2e6ea; --well-lo: #cbd1d8;
   --trim-a: #fbf8f2; --trim-b: #8e9aa7; --grain: 0.07;
   --bevel: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -2px 0 rgba(30, 40, 52, 0.12), 0 4px 14px rgba(30, 40, 52, 0.18);
@@ -91,6 +95,7 @@ button, input { font: inherit; color: inherit; }
 .btn.go { background: var(--green); border-color: var(--green-3, #56743f); color: #18200f; min-width: 100px; }
 .btn.go[aria-pressed="true"] { background: var(--burgundy); border-color: #5a1e29; color: var(--cream); }
 .file { font: 400 14px/1.3 var(--f-mono); color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 48ch; }
+.cpu { font: 400 13px/1.3 var(--f-mono); color: var(--faint); white-space: nowrap; }
 .note { margin: 0; color: var(--dim); font-size: 15px; max-width: 98ch; }
 .note b { font-weight: 600; }
 .k-ref { color: var(--rose-0, #f0c3c9); } .k-play { color: var(--powder-0, #c3dbee); } .k-kf { color: var(--green-0, #cbe4b8); }
@@ -108,6 +113,15 @@ button, input { font: inherit; color: inherit; }
 .view { position: relative; background: var(--bg); border: 2px solid var(--screen-border); border-radius: 14px; overflow: hidden; touch-action: none;
   box-shadow: inset 0 0 0 1px var(--screen-inset), var(--bevel); }
 .view canvas { display: block; width: 100%; }
+/* the screens: a brushed trim like the deck's boxes, and glass over the display (a soft sheen from the top left,
+   the edges sunk) */
+.view { border: 3px solid transparent;
+  background: linear-gradient(var(--bg), var(--bg)) padding-box,
+              linear-gradient(160deg, var(--trim-a), var(--trim-b) 28%, var(--trim-a) 52%, var(--trim-b) 78%, var(--trim-a)) border-box; }
+.view::after { content: ""; position: absolute; inset: 0; border-radius: 11px; pointer-events: none;
+  background: linear-gradient(162deg, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.025) 24%, rgba(255, 255, 255, 0) 24.5%),
+              radial-gradient(140% 90% at 30% -20%, rgba(190, 215, 240, 0.06), rgba(190, 215, 240, 0) 60%);
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.5); }
 .view .tag { position: absolute; left: 14px; top: 9px; font: 700 12px/1 var(--f-display); letter-spacing: 0.22em; text-transform: uppercase; color: var(--screen-tag); pointer-events: none; }
 .view .read { position: absolute; right: 14px; top: 9px; font: 400 13px/1 var(--f-mono); color: var(--screen-read); pointer-events: none; }
 #wave { height: 300px; cursor: crosshair; }
@@ -134,13 +148,13 @@ button, input { font: inherit; color: inherit; }
 .sval { font: 700 14px/1 var(--f-mono); color: var(--text); min-width: 15ch; text-align: right; }
 .deck { display: grid; grid-template-columns: minmax(0, 470px) minmax(0, 1fr); gap: 14px; align-items: stretch; }
 .box { background: var(--well); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--bevel); }
-.deck > .box { position: relative; border-color: var(--well-lo);
+.deck > .box, .box.lib { position: relative; border-color: var(--well-lo);
   background:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>") 0 0 / 180px 180px,
     linear-gradient(180deg, var(--well-hi), var(--well) 42%, var(--well-lo));
   background-blend-mode: soft-light, normal;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -2px 6px rgba(0, 0, 0, 0.25), 0 10px 26px rgba(0, 0, 0, 0.45); }
-.deck > .box::before { content: ""; position: absolute; inset: -4px; border-radius: 20px; padding: 2px; pointer-events: none;
+.deck > .box::before, .box.lib::before { content: ""; position: absolute; inset: -4px; border-radius: 20px; padding: 2px; pointer-events: none;
   background: linear-gradient(160deg, var(--trim-a), var(--trim-b) 28%, var(--trim-a) 52%, var(--trim-b) 78%, var(--trim-a));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
@@ -186,7 +200,7 @@ button, input { font: inherit; color: inherit; }
 .fhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .fhead .cap { font-size: 16px; }
 .fval { font: 700 18px/1 var(--f-mono); color: var(--mode-0); }
-.ftrack { position: relative; height: 72px; cursor: ew-resize; touch-action: none; border-radius: 12px; background: var(--raised); border: 1px solid var(--line); box-shadow: var(--bevel); }
+.ftrack { position: relative; height: 72px; cursor: ew-resize; touch-action: none; border-radius: 12px; background: var(--inset-bg); border: 1px solid var(--inset-line); box-shadow: var(--inset-shadow); }
 .ftrack:focus-visible { outline-offset: 3px; }
 .fsegs { position: absolute; left: 22px; right: 22px; top: 50%; height: 22px; margin-top: -11px; display: flex; gap: 3px; }
 .fsegs i { flex: 1; border-radius: 4px; background: var(--slot); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); }
@@ -201,7 +215,7 @@ button, input { font: inherit; color: inherit; }
 .stat b { font: 700 21px/1.1 var(--f-mono); color: var(--text); }
 .stat span { font: 500 10px/1.3 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
 .sboxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.sbox { display: grid; gap: 9px; align-content: start; padding: 12px 14px; background: var(--raised); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--bevel); }
+.sbox { display: grid; gap: 9px; align-content: start; padding: 12px 14px; background: var(--inset-bg); border: 1px solid var(--inset-line); border-radius: 12px; box-shadow: var(--inset-shadow); }
 .sbox .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .lvl { display: flex; align-items: center; gap: 14px; }
 .lvl input { accent-color: var(--cream); flex: 1; min-width: 0; }
@@ -240,6 +254,7 @@ button, input { font: inherit; color: inherit; }
   <header class="bar">
     <div class="brand"><h1>Keyframer Lab</h1><span>Digitakt II ONESHOT+ engine, in your browser</span></div>
     <span class="file" id="file">Demo loop (synthesized)</span>
+    <span class="cpu" id="cpu" title="The engine's render time against the audio it made (the audio thread); the page's drawing against each frame">audio – · drawing –</span>
     <input type="file" id="pickdir" webkitdirectory multiple hidden>
     <input type="file" id="pick" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.ogg" multiple hidden>
     <button class="btn" id="loaddir" type="button">Open folder</button>
@@ -390,8 +405,12 @@ function makeCore(k) {
       keys: new Int32Array(buf(), k.kw_keybuf(), nk).slice(), splices,
     };
   }
+  /* the engine's load: render time against the audio it made, over half a second (an AudioWorklet may have no
+     performance clock: then Date's milliseconds, which average out over the window) */
+  const clk = (typeof performance !== "undefined" && performance.now) ? () => performance.now() : () => Date.now();
+  let busy = 0, made = 0, load = -1;
   function render(L, R) {
-    const n = L.length;
+    const n = L.length, t0 = clk();
     for (let off = 0; off < n;) {
       const q = Math.min(1024, n - off);
       k.kw_render(q);
@@ -399,7 +418,13 @@ function makeCore(k) {
       R.set(new Float32Array(buf(), k.kw_out(1), q), off);
       off += q;
     }
-    return (++tick & 3) === 0 ? snapshot() : null;
+    busy += clk() - t0;
+    made += n / 48000 * 1000;
+    if (made >= 500) { load = busy / made; busy = made = 0; }
+    if ((++tick & 3) !== 0) return null;
+    const sn = snapshot();
+    sn.load = load;
+    return sn;
   }
   return { handle, render };
 }
@@ -609,6 +634,11 @@ function updateThin(resetToMax) {
     S.lev = raw.map(v => v / top);
   }
   S.chan = [0, 1].map((c) => Array.from(new Int32Array(abuf(), A.kw_chan_cuts(c), A.kw_chan_n(c))));
+  {   // each channel's slices' strengths, against the louder channel's loudest (a quieter side reads quieter)
+    const raw = [0, 1].map((c) => Array.from(new Float32Array(abuf(), A.kw_chan_levels(c), A.kw_chan_n(c)), v => Math.sqrt(Math.max(0, v))));
+    const top = Math.max(1e-12, ...raw[0], ...raw[1]);
+    S.chanLev = raw.map((l) => l.map((v) => v / top));
+  }
   post({ type: "cuts", cuts: Int32Array.from(S.cuts), chan: S.chan.map((l) => Int32Array.from(l)) });
   paintLen();
   if (S.slice) {   // (the selected slice: the new cuts' slice at the spot clicked, a playing note's region with it)
@@ -666,6 +696,7 @@ function stop() { post({ type: "stop" }); setPlaying(false); }
 
 function onLive(m) {
   S.live = m;
+  if (m.load >= 0) S.load = m.load;
   const now = performance.now();
   for (const sp of m.splices) S.trails.push({ from: sp[0], to: sp[1], kind: sp[2], at: now });
   if (S.trails.length > 160) S.trails.splice(0, S.trails.length - 160);
@@ -734,6 +765,20 @@ function shade(hex, l) {
 function sliceText(i) { return shade(PAIR[S.mode].text[i % 2], levOf(i)); }
 function sliceFill(i) { return shade(PAIR[S.mode].fill[i % 2], levOf(i)); }
 
+/* stereo detection: a lane's slices are its channel's own (THIN's picks from that channel's transients); a mono
+   sample's, and the zoomed view's left, the same lists as ever */
+function laneCuts(c) { return S.r && S.chan ? S.chan[c] : S.cuts; }
+function laneLev(c) { return S.r && S.chanLev ? S.chanLev[c] : S.lev; }
+function laneIdx(c, f) {
+  const cu = laneCuts(c);
+  if (!S.trans || !cu || cu.length < 2) return -1;
+  let lo = 0, hi = cu.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (cu[m] <= f) lo = m; else hi = m - 1; }
+  return lo;
+}
+function laneShade(c, i, which) { const lv = laneLev(c); return shade(PAIR[S.mode][which][i % 2], lv && i < lv.length ? lv[i] : 1); }
+function laneTraceCol(c, f) { const i = laneIdx(c, f); return i < 0 ? rgba(C.ink, 0.95) : laneShade(c, i, "text"); }
+
 /* the trace's colour at frame f: its slice's (the lighter of the pair) at its strength, cream with no transients */
 function sliceIdx(f) {
   const c = S.cuts;
@@ -749,6 +794,11 @@ function traceCol(f) {
 
 /* a chosen cut's marker: a dot in the colour of the slice it starts (the lighter of the pair, alternating as the
    zones do), ringed dark so it reads on any slice */
+function laneDot(g, x, y, d, c, i) {   // (a lane's cut: the same marker, its own slice's colour)
+  x = Math.max(5 * d, Math.min(g.canvas.width - 6 * d, x));
+  g.fillStyle = "#0a0d11"; g.beginPath(); g.arc(x + 0.5 * d, y, 5 * d, 0, 2 * Math.PI); g.fill();
+  g.fillStyle = laneShade(c, i, "text"); g.beginPath(); g.arc(x + 0.5 * d, y, 3.6 * d, 0, 2 * Math.PI); g.fill();
+}
 function cutDot(g, x, y, d, i) {
   x = Math.max(5 * d, Math.min(g.canvas.width - 6 * d, x));   // (inside the view: the first cut is at 0)
   g.fillStyle = "#0a0d11"; g.beginPath(); g.arc(x + 0.5 * d, y, 5 * d, 0, 2 * Math.PI); g.fill();
@@ -767,13 +817,19 @@ function drawWaveBase() {
   // the splice lane's floor
   g.fillStyle = "#0a0d11"; g.fillRect(0, 0, w, Ly.lane);
   g.fillStyle = C.line; g.fillRect(0, Ly.lane, w, Math.max(1, d));
-  // the slices: the mode's colour and its partner's in turn
+  // the slices: the mode's colour and its partner's in turn; the strip on top the shared slices (a click's), each
+  // lane tinted by its own (stereo detection: the channels' sections need not line up)
   for (let i = 0; i < S.cuts.length; i++) {
     const a = xOf(S.cuts[i], w), b = xOf(i + 1 < S.cuts.length ? S.cuts[i + 1] : S.n, w);
-    const col = sliceFill(i);
-    g.fillStyle = rgba(col, S.trans ? 0.08 : 0.03); g.fillRect(a, top, b - a, h - top);
-    g.fillStyle = rgba(col, S.trans ? 0.85 : 0.25); g.fillRect(a, top - 3 * d, b - a, 3 * d);
+    g.fillStyle = rgba(sliceFill(i), S.trans ? 0.85 : 0.25); g.fillRect(a, top - 3 * d, b - a, 3 * d);
   }
+  Ly.lanes.forEach(([y0, lh], c) => {
+    const cu = laneCuts(c);
+    for (let i = 0; i < cu.length; i++) {
+      const a = xOf(cu[i], w), b = xOf(i + 1 < cu.length ? cu[i + 1] : S.n, w);
+      g.fillStyle = rgba(laneShade(c, i, "fill"), S.trans ? 0.08 : 0.03); g.fillRect(a, y0, b - a, lh);
+    }
+  });
   // the TKEO envelope, behind (square root, against its highest)
   const dec = A.kw_dec(), envTop = [], envF = [];
   for (let x = 0; x < w; x++) {
@@ -794,7 +850,7 @@ function drawWaveBase() {
       const a = Math.floor((x / w) * S.n), b = Math.max(a + 1, Math.floor(((x + 1) / w) * S.n));
       let lo = 32767, hi = -32768;
       for (let i = a; i < b; i++) { const v = ch[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
-      g.fillStyle = traceCol(a);
+      g.fillStyle = laneTraceCol(c, a);
       g.fillRect(x, mid - hi * sc, 1, Math.max(1, (hi - lo) * sc));
     }
   });
@@ -802,13 +858,11 @@ function drawWaveBase() {
   g.fillStyle = rgba(mh[0], 0.5);
   for (const c of S.all) g.fillRect(Math.round(xOf(c, w)), top - 10 * d, Math.max(1, d), 5 * d);
   g.globalAlpha = S.trans ? 1 : 0.35;
-  S.cuts.forEach((c, i) => cutDot(g, Math.round(xOf(c, w)), top - 8 * d, d, i));
   g.font = `700 ${15 * d}px ${css("--f-mono")}`;
   g.textBaseline = "top";
   g.textAlign = "center";
-  S.cuts.forEach((c, i) => {   // (each cut's line in its slice's colour; each slice's number centred over it)
+  S.cuts.forEach((c, i) => {   // (each shared slice's number centred over it)
     const x = Math.round(xOf(c, w)), xe = xOf(i + 1 < S.cuts.length ? S.cuts[i + 1] : S.n, w), lbl = String(i + 1);
-    g.fillStyle = sliceFill(i); g.fillRect(x, top, Math.max(1, d), h - top);
     g.fillStyle = sliceText(i);
     if (xe - x >= g.measureText(lbl).width + 8 * d) g.fillText(lbl, (x + xe) / 2, Ly.lane + 4 * d);
     else {   // (a narrow slice: smaller, if that fits)
@@ -818,14 +872,8 @@ function drawWaveBase() {
     }
   });
   g.textAlign = "left";
-  // stereo detection: each channel's own borders (the slices' starts on its own hits), dots at its lane's top
-  if (S.r && S.chan) S.chan.forEach((list, c) => {
-    const y = Ly.lanes[c][0] + 6 * d;
-    for (const p of list) {
-      const x = Math.round(xOf(p, w)), i = sliceIdx(p);
-      g.fillStyle = "#0a0d11"; g.beginPath(); g.arc(x + 0.5 * d, y, 3.6 * d, 0, 2 * Math.PI); g.fill();
-      g.fillStyle = i < 0 ? P.cream[1] : sliceText(i); g.beginPath(); g.arc(x + 0.5 * d, y, 2.4 * d, 0, 2 * Math.PI); g.fill();
-    }
+  Ly.lanes.forEach(([y0, lh], c) => {   // (each lane's cut lines, in its own slices' colours)
+    laneCuts(c).forEach((p, i) => { g.fillStyle = laneShade(c, i, "fill"); g.fillRect(Math.round(xOf(p, w)), y0, Math.max(1, d), lh); });
   });
   g.globalAlpha = 1;
   g.fillStyle = C.line;
@@ -897,7 +945,7 @@ function zoomSpan(dist, playing) {
   return Z.span;
 }
 
-/* small labels on the heads (REF, PLAY, IN: the incoming head of a crossfade), pushed apart when they meet */
+/* small labels on the heads (REF, PLAY, XFADE: the incoming head of a crossfade, dotted), pushed apart when they meet */
 function headTags(g, tags, y, d, w) {
   g.font = `600 ${10 * d}px ${css("--f-display")}`;
   g.textBaseline = "middle";
@@ -930,11 +978,12 @@ function drawZoom() {
   const top = 26 * d, bot = h - 4 * d, mid = (top + bot) / 2, sc = (bot - top) / 2 / 32768 * 0.95;
   const at = (i) => { i = Math.floor(i) % S.n; if (i < 0) i += S.n; return S.l[i]; };
   // the slices in view, the mode's pair
-  for (let i = 0; i < S.cuts.length; i++) {
-    const s0 = S.cuts[i], s1 = i + 1 < S.cuts.length ? S.cuts[i + 1] : S.n;
+  const zc = laneCuts(0);   // (the left channel: in stereo its own slices)
+  for (let i = 0; i < zc.length; i++) {
+    const s0 = zc[i], s1 = i + 1 < zc.length ? zc[i + 1] : S.n;
     const x0 = (s0 - a) / span * w, x1 = (s1 - a) / span * w;
     if (x1 < 0 || x0 > w) continue;
-    g.fillStyle = rgba(sliceFill(i), S.trans ? 0.07 : 0.03); g.fillRect(Math.max(0, x0), top, Math.min(w, x1) - Math.max(0, x0), bot - top);
+    g.fillStyle = rgba(laneShade(0, i, "fill"), S.trans ? 0.07 : 0.03); g.fillRect(Math.max(0, x0), top, Math.min(w, x1) - Math.max(0, x0), bot - top);
   }
   {   // the TKEO envelope, as in the sample view (square root, against its highest), between its points linear;
       // in its slices' deeper colours
@@ -958,10 +1007,10 @@ function drawZoom() {
   }
   g.strokeStyle = C.line; g.lineWidth = d; g.beginPath(); g.moveTo(0, mid); g.lineTo(w, mid); g.stroke();
   g.globalAlpha = S.trans ? 0.9 : 0.3;
-  S.cuts.forEach((t, i) => { if (inView(t)) { g.fillStyle = sliceFill(i); g.fillRect(Math.round(fx(t)), top, Math.max(1, d), bot - top); } });
-  S.cuts.forEach((t, i) => { if (inView(t)) cutDot(g, Math.round(fx(t)), top + 1 * d, d, i); });
+  zc.forEach((t, i) => { if (inView(t)) { g.fillStyle = laneShade(0, i, "fill"); g.fillRect(Math.round(fx(t)), top, Math.max(1, d), bot - top); } });
+  zc.forEach((t, i) => { if (inView(t)) laneDot(g, Math.round(fx(t)), top + 1 * d, d, 0, i); });
   g.globalAlpha = 1;
-  if (playing) {   // the leash: from the reference to the play head
+  if (playing) {   // the heads' distance (in time: the leash counts keyframes, marked below at its reach)
     const xr = w / 2, xp = fx(play);
     g.fillStyle = rgba(P.rose[1], 0.14);
     g.fillRect(Math.min(xr, xp), top, Math.abs(xp - xr), bot - top);
@@ -973,7 +1022,7 @@ function drawZoom() {
   if (per < 2) {   // (a path a run of one colour, each joined to the last point)
     let col = null, px = 0, py = 0;
     for (let x = 0; x <= w; x++) {
-      const f = wrapF(a + x * per), y = mid - S.l[f] * sc, cc = traceCol(f);
+      const f = wrapF(a + x * per), y = mid - S.l[f] * sc, cc = laneTraceCol(0, f);
       if (cc !== col) { if (col) { g.lineTo(x, y); g.stroke(); } g.strokeStyle = col = cc; g.beginPath(); g.moveTo(x ? px : x, x ? py : y); }
       g.lineTo(x, y); px = x; py = y;
     }
@@ -982,7 +1031,7 @@ function drawZoom() {
     for (let x = 0; x < w; x++) {
       let lo = 32767, hi = -32768;
       for (let i = a + x * per; i < a + (x + 1) * per; i++) { const v = at(i); if (v < lo) lo = v; if (v > hi) hi = v; }
-      g.fillStyle = traceCol(wrapF(a + x * per));
+      g.fillStyle = laneTraceCol(0, wrapF(a + x * per));
       g.fillRect(x, mid - hi * sc, 1, Math.max(1, (hi - lo) * sc));
     }
   }
@@ -998,13 +1047,27 @@ function drawZoom() {
       const x = fx(kf);
       if (inside) { g.fillStyle = P.green[0]; g.beginPath(); g.arc(x, mid - S.l[kf] * sc, r, 0, 2 * Math.PI); g.fill(); }
     }
+    // the leash's reach: the K-th keyframe past the reference on the play head's side, where it splices back
+    // (sparse material can splice sooner: the sparse leash)
+    let reach = null;
+    if (near && m.keys.length) {
+      const fwd = play >= ref;
+      let i = 0;
+      while (i < m.keys.length && m.keys[i] <= ref) i++;   // (the first keyframe past the reference)
+      const j = fwd ? i + m.leash - 1 : i - m.leash;
+      if (j >= 0 && j < m.keys.length) reach = m.keys[j];
+    }
+    if (reach != null && inView(reach)) {
+      g.strokeStyle = P.rust[0]; g.lineWidth = 1.5 * d; g.setLineDash([2 * d, 3 * d]);
+      g.beginPath(); g.moveTo(Math.round(fx(reach)), top); g.lineTo(Math.round(fx(reach)), bot); g.stroke(); g.setLineDash([]);
+    }
     const head = (x, col, wd, dash) => { g.strokeStyle = col; g.lineWidth = wd * d; g.setLineDash(dash ? [4 * d, 3 * d] : []); g.beginPath(); g.moveTo(Math.round(x), top); g.lineTo(Math.round(x), bot); g.stroke(); g.setLineDash([]); };
     if (m.splicing) head(fx(m.temp), P.cream[1], 1.5, true);
     head(w / 2, P.rose[0], 2, false);
     head(fx(play), P.powder[0], 2, false);
-    headTags(g, [[w / 2, P.rose[0], "REF"], [fx(play), P.powder[0], "PLAY"]].concat(m.splicing ? [[fx(m.temp), P.cream[1], "IN"]] : []), top + 12 * d, d, w);   // (at the top: clear of the zoom button)
+    headTags(g, [[w / 2, P.rose[0], "REF"], [fx(play), P.powder[0], "PLAY"]].concat(m.splicing ? [[fx(m.temp), P.cream[1], "XFADE"]] : [], reach != null && inView(reach) ? [[fx(reach), P.rust[0], "SPLICE AT K"]] : []), top + 12 * d, d, w);   // (at the top: clear of the zoom button)
   }
-  $("zoomread").textContent = playing ? `${between} of K ${m.leash} keyframes between the heads${m.splicing ? " · crossfading" : ""}` : "press Play, or click a slice";
+  $("zoomread").textContent = playing ? `${between} of K ${m.leash} keyframes between the heads (shaded)${m.splicing ? " · crossfading" : ""}` : "press Play, or click a slice";
   $("zoomms").textContent = `${(span / SR * 1000).toFixed(0)} ms`;
 }
 
@@ -1019,7 +1082,21 @@ function drawStats() {
   fill("stats-b", [[on ? Math.round(S.rate.kps).toLocaleString() : "–", "keyframes / s"], [String(sizeK(S.size)), "K, the leash"], [String(S.trans ? S.cuts.length : 0), "transients live"]]);
 }
 
-function frame() { drawWave(); drawZoom(); drawStats(); requestAnimationFrame(frame); }
+/* the drawing's share of each frame, smoothed; with the engine's load, the header's readout */
+const UI = { t: 0, draw: 0, per: 16.7, shown: 0 };
+function frame() {
+  const t0 = performance.now();
+  drawWave(); drawZoom(); drawStats();
+  const t1 = performance.now();
+  if (UI.t) { UI.per += (t1 - UI.t - UI.per) * 0.05; }
+  UI.draw += (t1 - t0 - UI.draw) * 0.05;
+  UI.t = t1;
+  if (t1 - UI.shown > 500) {
+    UI.shown = t1;
+    $("cpu").textContent = `audio ${S.load != null ? (100 * S.load).toFixed(1) + " %" : "–"} · drawing ${Math.round(100 * UI.draw / Math.max(1, UI.per))} %`;
+  }
+  requestAnimationFrame(frame);
+}
 
 /* ---- knobs: Rogans seen from above (a skirt, a fluted body, a coloured top, a cream line down the side) ---- */
 function sizeK(s) {   // kf/sharc/dt2.c kf_size_k, for the readout
