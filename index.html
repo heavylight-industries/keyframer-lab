@@ -33,6 +33,9 @@
   --knob-lbl: #f4f1ea;
   --on-light: #1a1f26;    /* text on a light key (a mode's, cream) */
   --slot: #10141a;        /* THIN's and LEN's empty steps */
+  /* the deck's boxes: moulded plastic (a fine matte grain, lit from above) in a thin brushed-metal trim */
+  --well-hi: #252c35; --well-lo: #1a1f26;
+  --trim-a: #66768a; --trim-b: #29323c; --grain: 0.10;
   --burgundy: #8a2f40;    /* Stop */
   /* the screens: dark in either theme (an instrument's displays) */
   --bg: #0e1217;
@@ -71,6 +74,8 @@
   --title: #3a5674;
   --knob-lbl: #1d242c;
   --slot: #a9b3be;
+  --well-hi: #e2e6ea; --well-lo: #cbd1d8;
+  --trim-a: #fbf8f2; --trim-b: #8e9aa7; --grain: 0.07;
   --bevel: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -2px 0 rgba(30, 40, 52, 0.12), 0 4px 14px rgba(30, 40, 52, 0.18);
 }
 html, body { background: var(--paper); color: var(--text); }
@@ -136,6 +141,16 @@ button, input { font: inherit; color: inherit; }
 .sval { font: 700 14px/1 var(--f-mono); color: var(--text); min-width: 15ch; text-align: right; }
 .deck { display: grid; grid-template-columns: minmax(0, 470px) minmax(0, 1fr); gap: 14px; align-items: stretch; }
 .box { background: var(--well); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--bevel); }
+.deck > .box { position: relative; border-color: var(--well-lo);
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>") 0 0 / 180px 180px,
+    linear-gradient(180deg, var(--well-hi), var(--well) 42%, var(--well-lo));
+  background-blend-mode: soft-light, normal;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -2px 6px rgba(0, 0, 0, 0.25), 0 10px 26px rgba(0, 0, 0, 0.45); }
+.deck > .box::before { content: ""; position: absolute; inset: -4px; border-radius: 20px; padding: 2px; pointer-events: none;
+  background: linear-gradient(160deg, var(--trim-a), var(--trim-b) 28%, var(--trim-a) 52%, var(--trim-b) 78%, var(--trim-a));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
 .knobs { display: grid; grid-template-columns: repeat(3, 1fr); align-content: start; gap: 6px; padding: 18px 10px 14px; }
 .knob { display: grid; justify-items: center; align-content: start; gap: 4px; user-select: none; touch-action: none; }
 .knob svg { width: 132px; max-width: 100%; aspect-ratio: 1; cursor: ns-resize; overflow: visible; }
@@ -462,6 +477,7 @@ const A = (await WebAssembly.instantiate(wmod, {})).exports;
 const abuf = () => A.memory.buffer;
 
 /* ---- state ---- */
+const ZOOM_REST = 9600;   // the zoomed view's span at the first sample, frames (200 ms): auto zoom takes it from there
 const S = {
   l: null, r: null, n: 0, name: "", env: null, envMax: 1,
   all: [], cuts: [], mode: 1, thin: 16, thinMax: 1, trans: true,
@@ -519,7 +535,7 @@ function setSample(l, r, n, name) {
   if (S.r) new Int16Array(abuf(), A.kw_pcm(1), n).set(S.r);
   A.kw_sample(n, S.r ? 1 : 0);
   analyse();
-  S.s = 0; S.e = n; S.slice = null; S.zoom.span = S.zoom.hold = 0; S.zoom.at = null;
+  S.s = 0; S.e = n; S.slice = null; S.zoom.span = S.zoom.hold = Math.min(n, S.zoom.span || ZOOM_REST); S.zoom.at = null;   // (a new sample keeps the zoom)
   post({ type: "stop" });
   post({ type: "sample", l: S.l, r: S.r, n });
   for (const [id, v] of [[0, strOf(S.str)], [1, S.tune], [2, S.size], [3, S.play], [6, S.trans ? 1 : 0]]) post({ type: "set", id, v });
