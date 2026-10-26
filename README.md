@@ -23,6 +23,20 @@ samples. Everything runs in the page; nothing is uploaded.
 - **The knobs**: STR (the reference's speed), TUNE (the play head's pitch, ±60 semitones), SIZE (K, the leash).
   Lock STR + TUNE to keep their ratio while slowing everything down to watch.
 
+## MIDI and your DAW
+
+In Chrome or Edge, **Connect MIDI** and the page listens to your controllers and your DAW:
+- **Pads play slices**: from C1 (note 36) up, each note plays the next slice, its velocity the level. **Learn pads**
+  maps your own pads in order (a Korg padKONTROL's scene, say). In the loop modes, releasing a pad stops its slice.
+- **Learn knobs**: touch a control on the page, then move a knob or slider on the controller.
+- **Clock**: the DAW's tempo is shown; its start and stop start and stop playback, and **Fit the region to N bars**
+  sets STR so the region spans that many bars at the DAW's tempo.
+
+To record it in a DAW, pick an output on the page (no change to your system's): **BlackHole 2ch** on macOS,
+**VB-CABLE** on Windows, and arm a track that records from it. On Linux with PipeWire, wire the browser's output to
+the DAW in qpwgraph or Helvum. The page shows these steps for your system, with the virtual MIDI port for each
+(the IAC bus, loopMIDI, PipeWire's own).
+
 ## Building
 
 Needs clang with the wasm32 target, wasm-ld, python3, and node for the check.

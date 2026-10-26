@@ -161,7 +161,19 @@ button, input { font: inherit; color: inherit; }
 .lvl input { accent-color: var(--cream); flex: 1; min-width: 0; }
 .lvl .cap { min-width: 96px; }   /* (the sliders start in line) */
 .foot { margin: 0; color: var(--faint); font-size: 13px; max-width: 104ch; }
+.conn { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px 28px; padding: 16px 18px; }
+.conncol { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.cstat { font-size: 13px; color: var(--dim); }
+.tempo { font: 700 16px/1 var(--f-mono); color: var(--text); min-width: 9ch; }
+.conn select { background: var(--raised); color: var(--text); border: 1px solid var(--track); border-radius: 8px; padding: 6px 8px; font: 500 13px/1.2 var(--f-body); max-width: 100%; }
+.ostabs { display: inline-flex; gap: 6px; }
+.ostabs button { background: transparent; border: 1px solid var(--track); border-radius: 999px; padding: 5px 12px; cursor: pointer;
+  font: 700 11px/1.2 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); }
+.ostabs button[aria-pressed="true"] { background: var(--cream); border-color: var(--cream); color: #1c1418; }
+.osbody ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; color: var(--text); }
+.osbody code { font: 400 12px/1.3 var(--f-mono); background: var(--raised); padding: 1px 5px; border-radius: 4px; }
 @media (max-width: 860px) {
+  .conn { grid-template-columns: 1fr; }
   .stage { grid-template-columns: 1fr; }
   .lib { contain: none; max-height: 220px; }
   .knob:nth-child(2) { margin-top: 36px; }
@@ -223,25 +235,63 @@ button, input { font: inherit; color: inherit; }
         </div>
         <label class="switch"><input type="checkbox" id="trans" checked> Transients</label>
       </div>
-      <div class="modes" id="mode" role="group" aria-label="TR.DET mode">
+      <div class="modes" id="mode" data-cc="mode" role="group" aria-label="TR.DET mode">
         <button class="mk" type="button" data-v="1"><b>Vol</b><span>The loudest hits first</span></button>
         <button class="mk" type="button" data-v="2"><b>Grid</b><span>Even steps, each moved to the nearest transient</span></button>
         <button class="mk" type="button" data-v="3"><b>Rand</b><span>A random pick of the transients</span></button>
       </div>
-      <div class="lvl"><span class="cap">Smoothing</span><input type="range" id="smooth" min="0" max="1" step="0.001" aria-label="TKEO smoothing: the detector's follower cutoff"><span class="sval" id="smoothval"></span></div>
+      <div class="lvl"><span class="cap">Smoothing</span><input type="range" id="smooth" data-cc="smooth" min="0" max="1" step="0.001" aria-label="TKEO smoothing: the detector's follower cutoff"><span class="sval" id="smoothval"></span></div>
       <div class="sboxes">
         <div class="sbox"><span class="cap">Splices</span><div class="stats" id="stats-a"></div></div>
         <div class="sbox"><span class="cap">Keyframes and transients</span><div class="stats" id="stats-b"></div></div>
       </div>
       <div class="fader">
         <div class="fhead"><span class="cap">Thin</span><span class="fval" id="thinval"></span></div>
-        <div class="ftrack" id="thin" tabindex="0" role="slider" aria-label="THIN: transients kept">
+        <div class="ftrack" id="thin" data-cc="thin" tabindex="0" role="slider" aria-label="THIN: transients kept">
           <div class="fsegs" id="thinsegs"></div>
           <div class="fcap" id="thincap"></div>
         </div>
         <div class="fends"><span>1</span><span id="thinmax"></span></div>
       </div>
-      <div class="lvl"><span class="cap">Level</span><input type="range" id="vol" min="0" max="1" step="0.01" value="0.7" aria-label="Output level"></div>
+      <div class="lvl"><span class="cap">Level</span><input type="range" id="vol" data-cc="vol" min="0" max="1" step="0.01" value="0.7" aria-label="Output level"></div>
+    </div>
+  </section>
+
+  <section class="box conn" aria-label="MIDI and routing">
+    <div class="conncol">
+      <span class="cap">MIDI</span>
+      <div class="row"><button class="btn" id="midion" type="button">Connect MIDI</button>
+        <select id="midiin" aria-label="MIDI input" hidden></select>
+        <span class="cstat" id="midistat">Pads play slices, velocity sets the level; knobs and the clock follow your DAW or controller.</span></div>
+      <div class="row"><button class="lock" id="padlearn" type="button" aria-pressed="false">Learn pads</button>
+        <button class="lock" id="cclearn" type="button" aria-pressed="false">Learn knobs</button>
+        <span class="cstat" id="learnstat"></span></div>
+      <div class="row"><span class="cap">Clock</span><span class="tempo" id="tempo">no clock</span>
+        <label class="switch"><input type="checkbox" id="clockgo" checked> Start and stop with it</label>
+        <label class="switch"><input type="checkbox" id="clockfit"> Fit the region to</label>
+        <select id="bars" aria-label="Bars"><option>1</option><option selected>2</option><option>4</option><option>8</option></select><span class="cstat">bars</span></div>
+    </div>
+    <div class="conncol">
+      <span class="cap">Into a DAW</span>
+      <div class="row"><span class="cap">Output</span><select id="sink" aria-label="Audio output"><option value="">System default</option></select>
+        <button class="lock" id="sinknames" type="button">Show device names</button></div>
+      <div class="ostabs" id="ostabs" role="group" aria-label="Your system">
+        <button type="button" data-os="mac">macOS</button><button type="button" data-os="win">Windows</button><button type="button" data-os="linux">Linux</button></div>
+      <div class="osbody" id="os-mac" hidden><ol>
+        <li>Install <b>BlackHole 2ch</b> (free, Existential Audio).</li>
+        <li>Pick <b>BlackHole 2ch</b> as the Output above.</li>
+        <li>In your DAW, record from BlackHole 2ch on an armed track; monitor that track to hear it.</li>
+        <li>MIDI from the DAW: Audio MIDI Setup, Window, Show MIDI Studio, <b>IAC Driver</b>, tick "Device is online". Send the DAW's MIDI and clock to the IAC bus and pick it here.</li></ol></div>
+      <div class="osbody" id="os-win" hidden><ol>
+        <li>Install <b>VB-CABLE</b> (free, VB-Audio).</li>
+        <li>Pick <b>CABLE Input</b> as the Output above.</li>
+        <li>In your DAW, record from <b>CABLE Output</b> on an armed track; monitor it to hear it.</li>
+        <li>MIDI from the DAW: <b>loopMIDI</b> (free, Tobias Erichsen) makes a virtual port. Send the DAW's MIDI and clock to it and pick it here.</li></ol></div>
+      <div class="osbody" id="os-linux" hidden><ol>
+        <li>Nothing to install with PipeWire: open <b>qpwgraph</b> or Helvum and wire the browser's output into your DAW's input.</li>
+        <li>Or a dedicated device: <code>pactl load-module module-null-sink sink_name=keyframer</code>, pick it as the Output above (Show device names first), and record its monitor in the DAW.</li>
+        <li>MIDI from the DAW: its ports show up here through PipeWire. A virtual port if you need one: <code>sudo modprobe snd-virmidi</code>.</li></ol></div>
+      <p class="cstat">MIDI and the output choice need Chrome or Edge (Firefox asks before MIDI; Safari has neither).</p>
     </div>
   </section>
   <p class="foot">The engine is the unit's own C (kf/kf.c, kf/tkeo.c) compiled to WebAssembly, with no changes to its arithmetic, so every number matches the Digitakt's.
@@ -504,6 +554,7 @@ async function startAudio() {
   if (ctx) return;
   const AC = window.AudioContext || window.webkitAudioContext;
   try { ctx = new AC({ sampleRate: SR, latencyHint: "interactive" }); } catch (e) { ctx = new AC(); }
+  if (SINK.id && ctx.setSinkId) { try { await ctx.setSinkId(SINK.id); } catch (e) { /* (the default, then) */ } }
   gain = ctx.createGain();
   gain.gain.value = Number($("vol").value);
   gain.connect(ctx.destination);
@@ -534,9 +585,10 @@ async function startAudio() {
 
 function setPlaying(on) { $("play").setAttribute("aria-pressed", on ? "true" : "false"); $("play").textContent = on ? "Stop" : "Play"; }
 
-async function trig(s, e, slice) {
+async function trig(s, e, slice, vel) {   // (vel: a pad's velocity, 1 .. 127; none: full level)
   await startAudio();
   if (ctx.state !== "running") await ctx.resume();
+  post({ type: "set", id: 7, v: (vel ? (vel / 127) ** 1.6 : 1) / 32768 });
   post({ type: "trig", s, e, slice: slice ? 1 : 0 });
   setPlaying(true);
 }
@@ -894,6 +946,7 @@ function knob(spec) {
   const k = spec.key;
   el.innerHTML = `<svg viewBox="-60 -60 120 120" id="knob-${k}" tabindex="0" role="slider" aria-label="${spec.label}" aria-valuemin="${spec.min}" aria-valuemax="${spec.max}"></svg><span class="lbl">${spec.label}</span><span class="val"></span><span class="sub">${spec.sub}</span>`;
   const svg = el.querySelector("svg"), val = el.querySelector(".val");
+  svg.dataset.cc = k;   // (MIDI learn's target)
   const A0 = -150, A1 = 150, fineStep = spec.fine || spec.step, coarse = spec.coarse || spec.step;
   const angOf = (v) => A0 + ((v - spec.min) / (spec.max - spec.min)) * (A1 - A0);
   let flutes = "";
@@ -1149,6 +1202,156 @@ document.addEventListener("keydown", (e) => {   // (↑ ↓ through the samples,
 $("smooth").addEventListener("input", (e) => setSmoothing(Number(e.target.value)));
 $("smooth").addEventListener("dblclick", () => setSmoothing(POS_DEF));
 window.addEventListener("resize", () => drawWaveBase());
+
+/* ---- MIDI: pads play slices (velocity the level), learned CCs move the controls, the clock's tempo, start and
+   stop. Events act at the next audio quantum (2.7 ms) ---- */
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* (a private window) */ } } };
+const MIDI = { access: null, notes: store.get("kfl.notes", null), ccs: store.get("kfl.ccs", {}), learnPads: null, learnCC: false, target: null,
+  held: -1, clock: { last: 0, ema: 0, bpm: 0, shown: 0 } };
+const NOTE_BASE = 36;   // (no pads learned: C1 plays slice 1, C#1 slice 2 ...)
+const noteName = (n) => ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][n % 12] + (Math.floor(n / 12) - 1);
+const CC_NAMES = { str: "STR", tune: "TUNE", sizep: "SIZE", thin: "THIN", smooth: "Smoothing", vol: "Level", mode: "the mode" };
+function padNote(n, vel) {
+  const idx = MIDI.notes ? MIDI.notes.indexOf(n) : n - NOTE_BASE;
+  if (idx < 0) return;
+  const cuts = S.trans && S.cuts.length > 1 ? S.cuts : null;
+  if (cuts && idx >= cuts.length) return;
+  const s0 = cuts ? cuts[idx] : S.s, e0 = cuts ? (idx + 1 < cuts.length ? cuts[idx + 1] : S.n) : S.e;
+  S.pick = s0; S.slice = cuts ? [s0, e0] : null; S.zoom.at = null;
+  MIDI.held = n;
+  trig(s0, e0, !!cuts, vel);
+}
+function applyCC(target, v) {
+  const f = v / 127;
+  const kn = KNOBS.find((k) => k.key === target);
+  if (kn) kn.set(kn.min + f * (kn.max - kn.min), true);
+  else if (target === "thin") setThin(1 + Math.round(f * (S.thinMax - 1)));
+  else if (target === "smooth") setSmoothing(f);
+  else if (target === "vol") { $("vol").value = String(f); if (gain) gain.gain.value = f; }
+  else if (target === "mode") { const m = 1 + Math.min(2, Math.floor(v / 43)); if (m !== S.mode) { S.mode = m; paintMode(); updateThin(false); } }
+}
+function fitToClock() {
+  if (!$("clockfit").checked || !MIDI.clock.bpm || !S.n) return;
+  const frames = S.e - S.s, bars = Number($("bars").value);
+  const st = Math.max(0.01, Math.min(4, frames / (bars * 4 * (60 / MIDI.clock.bpm) * SR)));
+  if (Math.abs(strOf(S.str) - st) / st > 0.002) KNOBS[0].set(posOfStr(st), true);
+}
+function midiMessage(d, t) {
+  const st = d[0] & 0xf0;
+  if (d[0] === 0xf8) {   // clock: 24 a beat; the tempo from their spacing, smoothed
+    const c = MIDI.clock, dt = t - c.last;
+    c.last = t;
+    if (dt > 0 && dt < 250) {
+      c.ema = c.ema ? c.ema * 0.92 + dt * 0.08 : dt;
+      c.bpm = 60000 / (c.ema * 24);
+      if (Math.abs(c.bpm - c.shown) >= 0.1) { c.shown = c.bpm; $("tempo").textContent = `${c.bpm.toFixed(1)} BPM`; fitToClock(); }
+    }
+    return;
+  }
+  if (d[0] === 0xfa || d[0] === 0xfb) { if ($("clockgo").checked) { S.slice = null; fitToClock(); trig(S.s, S.e, false); } return; }
+  if (d[0] === 0xfc) { if ($("clockgo").checked) stop(); return; }
+  if (st === 0x90 && d[2] > 0) {
+    if (MIDI.learnPads) {
+      if (!MIDI.learnPads.includes(d[1])) MIDI.learnPads.push(d[1]);
+      $("learnstat").textContent = `${MIDI.learnPads.length} pad${MIDI.learnPads.length > 1 ? "s" : ""} learned (${noteName(d[1])}): next is slice ${MIDI.learnPads.length + 1}. Press Learn pads again when done.`;
+      return;
+    }
+    padNote(d[1], d[2]);
+    return;
+  }
+  if (st === 0x80 || (st === 0x90 && d[2] === 0)) {   // (a loop mode: the pad's release stops its slice)
+    if (d[1] === MIDI.held && (S.play === 1 || S.play === 2)) { stop(); MIDI.held = -1; }
+    return;
+  }
+  if (st === 0xb0) {
+    if (MIDI.learnCC && MIDI.target) {
+      for (const [cc, tg] of Object.entries(MIDI.ccs)) if (tg === MIDI.target) delete MIDI.ccs[cc];
+      MIDI.ccs[d[1]] = MIDI.target;
+      store.set("kfl.ccs", MIDI.ccs);
+      $("learnstat").textContent = `CC ${d[1]} moves ${CC_NAMES[MIDI.target]}. Touch another control, or press Learn knobs to finish.`;
+      MIDI.target = null;
+      return;
+    }
+    const tg = MIDI.ccs[d[1]];
+    if (tg) applyCC(tg, d[2]);
+  }
+}
+function listInputs() {
+  const sel = $("midiin"), ins = [...MIDI.access.inputs.values()], keep = sel.value;
+  sel.innerHTML = `<option value="*">All inputs (${ins.length})</option>` + ins.map((i) => `<option value="${i.id}">${(i.name || "Input").replace(/[<&]/g, "")}</option>`).join("");
+  sel.value = ins.some((i) => i.id === keep) ? keep : "*";
+  for (const i of ins) i.onmidimessage = (e) => { if (sel.value === "*" || sel.value === i.id) midiMessage(e.data, e.timeStamp); };
+  $("midistat").textContent = ins.length ? `Listening. Pads from ${MIDI.notes ? "your learned notes" : "C1 (36) up"} play slices 1, 2, 3 …` : "No MIDI inputs yet: plug one in, or open a virtual port.";
+}
+$("midion").addEventListener("click", async () => {
+  if (!navigator.requestMIDIAccess) { $("midistat").textContent = "This browser has no Web MIDI: use Chrome or Edge."; return; }
+  try {
+    MIDI.access = await navigator.requestMIDIAccess({ sysex: false });
+    $("midiin").hidden = false; $("midion").hidden = true;
+    MIDI.access.onstatechange = listInputs;
+    listInputs();
+  } catch (e) { $("midistat").textContent = "MIDI was refused here. Open the page itself (not a preview) in Chrome or Edge and allow MIDI."; }
+});
+$("padlearn").addEventListener("click", () => {
+  if (MIDI.learnPads) {
+    const got = MIDI.learnPads;
+    MIDI.notes = got.length ? got : null;
+    store.set("kfl.notes", MIDI.notes);
+    MIDI.learnPads = null;
+    $("learnstat").textContent = got.length ? `${got.length} pads play slices 1 to ${got.length}.` : "Back to notes from C1 up.";
+  } else {
+    MIDI.learnPads = [];
+    $("learnstat").textContent = "Hit your pads in order: slice 1, 2, 3 … Press Learn pads again when done (none: notes from C1 up).";
+  }
+  $("padlearn").setAttribute("aria-pressed", MIDI.learnPads ? "true" : "false");
+});
+$("cclearn").addEventListener("click", () => {
+  MIDI.learnCC = !MIDI.learnCC; MIDI.target = null;
+  $("cclearn").setAttribute("aria-pressed", MIDI.learnCC ? "true" : "false");
+  $("learnstat").textContent = MIDI.learnCC ? "Touch a control here, then move a knob or slider on your controller." : `${Object.keys(MIDI.ccs).length} controls mapped.`;
+});
+document.addEventListener("pointerdown", (e) => {   // (learning: the control touched is the next CC's)
+  if (!MIDI.learnCC) return;
+  const el = e.target.closest("[data-cc]");
+  if (!el) return;
+  MIDI.target = el.dataset.cc;
+  $("learnstat").textContent = `Now move a knob or slider for ${CC_NAMES[MIDI.target]}.`;
+}, true);
+$("clockfit").addEventListener("change", fitToClock);
+$("bars").addEventListener("change", fitToClock);
+
+/* ---- the output device: straight to a virtual cable without changing the system's (Chrome, Edge) ---- */
+const SINK = { id: store.get("kfl.sink", "") };
+async function listSinks() {
+  const sel = $("sink");
+  if (!navigator.mediaDevices?.enumerateDevices || !("setSinkId" in AudioContext.prototype)) {
+    sel.disabled = true; $("sinknames").hidden = true;
+    sel.innerHTML = "<option>System default (this browser can't choose)</option>";
+    return;
+  }
+  const outs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audiooutput" && d.deviceId !== "default");
+  sel.innerHTML = `<option value="">System default</option>` + outs.map((d, i) => `<option value="${d.deviceId}">${(d.label || "Output " + (i + 1)).replace(/[<&]/g, "")}</option>`).join("");
+  sel.value = outs.some((d) => d.deviceId === SINK.id) ? SINK.id : "";
+  $("sinknames").hidden = outs.every((d) => d.label);
+}
+$("sink").addEventListener("change", async (e) => {
+  SINK.id = e.target.value; store.set("kfl.sink", SINK.id);
+  if (ctx && ctx.setSinkId) { try { await ctx.setSinkId(SINK.id); } catch (err) { $("midistat").textContent = "That output couldn't be opened."; } }
+});
+$("sinknames").addEventListener("click", async () => {   // (the browser names devices only once a page may use the microphone: asked, then closed at once)
+  try { const m = await navigator.mediaDevices.getUserMedia({ audio: true }); m.getTracks().forEach((t) => t.stop()); }
+  catch (e) { $("sinknames").textContent = "Names refused"; }
+  listSinks();
+});
+navigator.mediaDevices?.addEventListener?.("devicechange", listSinks);
+listSinks().catch(() => {});
+{
+  const os = /Mac/.test(navigator.platform) ? "mac" : /Win/.test(navigator.platform) ? "win" : "linux";
+  const show = (o) => { document.querySelectorAll("#ostabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.os === o ? "true" : "false")); ["mac", "win", "linux"].forEach((x) => { $("os-" + x).hidden = x !== o; }); };
+  $("ostabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) show(b.dataset.os); });
+  show(os);
+}
 
 paintMode();
 setSmoothing(POS_DEF);
