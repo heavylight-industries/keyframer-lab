@@ -315,7 +315,8 @@ body[data-lib="open"]::after { content: ""; position: fixed; inset: 0; z-index: 
 .mod-det .mk b { font-size: 19px; }
 .mod-det .mk span { font-size: 12px; }
 .mod-play .row { flex-direction: column; align-items: stretch; gap: 10px; }
-.mod-play .seg { display: grid; grid-template-columns: 1fr 1fr; }
+.mod-play .seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mod-play .seg button { padding-inline: 6px; white-space: nowrap; }
 .mod-play .seg button { border-bottom: 1px solid var(--track); }
 .mod-play .seg button:nth-child(2n) { border-right: 0; }
 .mod-play .seg button:nth-child(n + 3) { border-bottom: 0; }
@@ -401,9 +402,11 @@ body[data-lib="open"]::after { content: ""; position: fixed; inset: 0; z-index: 
     </div>
     <div class="mod mod-play"><h2 class="eng">Playback</h2>
       <div class="row"><span class="cap">Direction</span>
-        <div class="seg" id="playmode" role="group" aria-label="PLAY mode">
-          <button type="button" data-v="0">◀ Once</button><button type="button" data-v="1">◀ Loop</button>
-          <button type="button" data-v="2">Loop ▶</button><button type="button" data-v="3">Once ▶</button>
+        <div class="seg" id="playmode" role="group" aria-label="PLAY: the grains' direction, the song's, once or loop" title="As the unit's PLAY knob, left to right: the first arrow the grains (the play head), the second the song (the reference); the song switched back keeps time, and jumps there when switched forward again (slip)">
+          <button type="button" data-v="0">◀▶ Once</button><button type="button" data-v="1">◀▶ Loop</button>
+          <button type="button" data-v="2">▶◀ Once</button><button type="button" data-v="3">▶◀ Loop</button>
+          <button type="button" data-v="4">◀◀ Once</button><button type="button" data-v="5">◀◀ Loop</button>
+          <button type="button" data-v="6">▶▶ Loop</button><button type="button" data-v="7">▶▶ Once</button>
         </div>
         <label class="switch"><input type="checkbox" id="trans" checked> Transients</label>
       </div>
@@ -592,7 +595,7 @@ const S = {
   l: null, r: null, n: 0, name: "", env: null, envMax: 1,
   all: [], cuts: [], mode: 1, thin: 16, thinMax: 1, trans: true,
   s: 0, e: 0, slice: null,
-  len: 1, lenWant: 1, str: 0.5, tune: 0, size: 60, sizep: (60 / 120) ** (1 / 0.6), play: 3,   // (str, sizep: knob positions; the stretch 4 p |p|, SIZE 120 p^0.6)
+  len: 1, lenWant: 1, str: 0.5, tune: 0, size: 60, sizep: (60 / 120) ** (1 / 0.6), play: 7,   // (str, sizep: knob positions; the stretch 4 p |p|, SIZE 120 p^0.6)
   live: null, trails: [], rate: { t: 0, splices: 0, keys: 0, sps: 0, kps: 0 },
   zoom: { auto: true, span: 0, hold: 0, t: 0, at: null, kreach: true },   // (at: where a drag left the view, nothing playing; kreach: the K window shaded)
 };
@@ -1475,6 +1478,7 @@ fader.addEventListener("keydown", (e) => {
 
 /* ---- the other controls ---- */
 const pm = $("playmode");
+const playLoops = (k) => k === 1 || k === 3 || k === 5 || k === 6;   // (PLAY's .L positions: dt2.c play_dec)
 const paintPlay = () => pm.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", Number(b.dataset.v) === S.play ? "true" : "false"));
 pm.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; S.play = Number(b.dataset.v); paintPlay(); post({ type: "set", id: 3, v: S.play }); });
 paintPlay();
@@ -1691,7 +1695,7 @@ function midiMessage(d, t) {
     return;
   }
   if (st === 0x80 || (st === 0x90 && d[2] === 0)) {   // (a loop mode: the pad's release stops its slice)
-    if (d[1] === MIDI.held && (S.play === 1 || S.play === 2)) { stop(); MIDI.held = -1; }
+    if (d[1] === MIDI.held && playLoops(S.play)) { stop(); MIDI.held = -1; }
     return;
   }
   if (st === 0xb0) {

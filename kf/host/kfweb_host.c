@@ -8,7 +8,7 @@
  * The script, a command a line ('#' a comment):
  *   analyze              the detector over the sample (kw_analyze)
  *   thin MODE N          THIN's cuts (kw_thin: 1 VOL, 2 GRID, 3 RAND), then kw_set_cuts with them
- *   set ID VALUE         kw_set (0 STR, 1 TUNE, 2 SIZE, 3 PLAY, 4 start, 5 end, 6 transients, 7 gain)
+ *   set ID VALUE         kw_set (0 STR, 1 TUNE, 2 SIZE, 3 PLAY (0..7: dt2.c play_dec), 4 start, 5 end, 6 transients, 7 gain)
  *   trig SLICE           kw_trig
  *   stop                 kw_stop
  *   render FRAMES        kw_render in pieces of 128 frames (an AudioWorklet's quantum), both channels

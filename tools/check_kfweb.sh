@@ -17,7 +17,7 @@ for W in "$@"; do
     # 1. against kfrender: STR 1, TUNE 0, SIZE 60 (K 64), looped, full scale, no transients
     "$R/build/kfweb/kfrender" "$W" "$O/$b.kfrender.wav" --k 64 2>/dev/null
     n=$(python3 -c "import sys,struct; d=open(sys.argv[1],'rb').read(); print(struct.unpack('<I',d[40:44])[0]//4//struct.unpack('<H',d[22:24])[0])" "$O/$b.kfrender.wav")
-    printf 'set 7 0.000030517578125\nset 3 2\nset 2 60\nset 6 0\ntrig 0\nrender %s\n' "$n" > "$O/raw.txt"
+    printf 'set 7 0.000030517578125\nset 3 6\nset 2 60\nset 6 0\ntrig 0\nrender %s\n' "$n" > "$O/raw.txt"
     "$R/build/kfweb/kfweb_host" "$W" "$O/raw.txt" "$O/$b.raw.f32" > /dev/null
     if python3 - "$O/$b.kfrender.wav" "$O/$b.raw.f32" <<'PY'
 import struct, sys
@@ -38,7 +38,7 @@ thin 1 8
 set 0 1.5
 set 1 -5
 set 2 40
-set 3 3
+set 3 7
 trig 0
 render 48000
 thin 2 12
@@ -51,12 +51,12 @@ set 6 0
 render 9600
 set 4 20000
 set 5 90000
-set 3 3
+set 3 7
 trig 1
 render 40000
 thin 3 5
 set 6 1
-set 3 2
+set 3 6
 set 0 0
 set 1 7
 set 2 90

@@ -6,9 +6,10 @@
  *
  * kf/kf.c and kf/tkeo.c are included unchanged (as kfborder.c does), the splice hook logging each of the left
  * voice's splices for the picture. The glue follows kf/sharc/dt2.c's ONESHOT path (KF58 on): STR's stretch (4 q,
- * linear; its sign the song's direction), TUNE in semitones through kf_exp2, SIZE's K through kf_size_k, PLAY's
- * four modes (reverse turns the play head alone; dt2.c's slip, the catch-up of a song turned back, is not here), a
- * play-once note silent past its edge (kf_edge), its end fade, the retrigger's declick, and the
+ * linear; its sign the song's direction too, a scan), TUNE in semitones through kf_exp2, SIZE's K through kf_size_k,
+ * PLAY's 8 positions (play_dec: the play head's direction, the song's switch, once or loop; the switch slips, and a
+ * PLAY change mid-note crosses over 40 ms), a note restarted crossed from the old one's tail over 20 ms (kf_xf_start),
+ * a play-once note silent past its edge (kf_edge), its end fade, the retrigger's declick, and the
  * transients THIN keeps (tk_cache_cuts in the grid's mode, as WERP+'s thin) as the engine's borders. Every
  * number is the C's: no fused multiply-adds (wasm32 has none; the host build -ffp-contract=off).
  *
@@ -51,6 +52,8 @@ static void kw_splice(const void *v);
 #define KW_DECLICK    16
 #define KW_EDGE_OUT   192
 #define KW_EDGE_IN    64
+#define KW_XF         960       /* dt2.c KF_XF: a note restarted while one plays, the old note's tail crossed in, 20 ms */
+#define KW_XF_PLAY    1920      /* dt2.c KF_XF_PLAY: PLAY changed mid-note, 40 ms */
 
 #ifdef __wasm__
 /* freestanding: what clang may call for struct copies and clears */
@@ -145,7 +148,7 @@ static int32_t  tnc[2];
 
 /* the controls, and what they make */
 static float    c_str = 1.0f, c_tune = 0.0f, c_size = 60.0f, c_gain = 1.0f / 32768.0f;
-static int32_t  c_play = 3, c_s, c_e, c_eps = KF_EPS;
+static int32_t  c_play = 7, c_s, c_e, c_eps = KF_EPS;   /* (PLAY: dt2.c's 8 positions, 7 FF: play_dec) */
 static float    stretch = 1.0f, pitch = 1.0f;
 static int32_t  leash = 64, once = 1;
 
@@ -156,6 +159,15 @@ static int32_t  playing, slice_note;
 static int32_t  start_at = -1, carry;   /* kw_trig_at's start; a note playing when kw_sample swapped the sample */
 static int32_t  done[2], fade[2], since_wrap[2], retrig[2];
 static float    last_out[2];
+/* dt2.c kf_xf_start's tail: the old note's play head read on at its rate, crossed out over xf_left samples */
+static kf_head  xf_head[2];
+static int32_t  xf_si[2], xf_left[2];
+static uint32_t xf_sf[2];
+static float    xf_gain[2], xf_inv[2];
+/* dt2.c kf_slip: the song reversed by PLAY's switch keeps a forward clock; forward again, the note jumps there */
+static int32_t  slip_on, slip_go;
+static float    slip_pos, fwd_rate;
+static uint32_t slip_frm;
 static int32_t  edge_ip[2];
 static uint32_t edge_fq[2];
 static float    out[2][128 * 8];
@@ -222,20 +234,74 @@ void kw_trace(const tk_state *s)
     if (s->i % KW_DEC == 0 || e > trace_to[b]) trace_to[b] = e;
 }
 
-/* the rates and the leash from the controls (dt2.c kf_controls): STR's sign the song's direction, PLAY's reverse
-   the play head's alone */
+/* PLAY's 8 positions (dt2.c play_dec, the owner 2026-10-27): k 0 RF, 1 RF.L, 2 FR, 3 FR.L | 4 RR, 5 RR.L, 6 FF.L,
+   7 FF (the play head's direction, the song's; .L loops). mode << 1 | song: mode as stock numbers it (0 rev once,
+   1 rev loop, 2 fwd loop, 3 fwd once), song 1 reversed */
+static uint32_t play_dec(int32_t k)
+{
+    uint32_t mode;
+    k &= 7;
+    if ((k & 2) == 0) mode = (uint32_t)(k & 1);
+    else if ((k & 4) == 0) mode = 3u - (uint32_t)(k & 1);
+    else mode = 2u + (uint32_t)(k & 1);
+    return (mode << 1) | (((uint32_t)(k >> 1) ^ (uint32_t)(k >> 2)) & 1u);
+}
+
+/* the rates and the leash from the controls (dt2.c kf_controls): PLAY turns the play head (its mode) and the song
+   (its switch: the stretch's sign flipped); STR's sign turns the song too, a continuous scan */
 static void derive(void)
 {
-    const float dir = (c_play <= 1) ? -1.0f : 1.0f;
+    const uint32_t pd = play_dec(c_play);
+    const float dir = ((pd >> 1) <= 1u) ? -1.0f : 1.0f;
     float q = c_str * 0.25f;
     float h = c_size * 256.0f;
     if (q > 1.0f) q = 1.0f;
     if (q < -1.0f) q = -1.0f;
     stretch = 4.0f * q;
+    if (pd & 1u) stretch = -stretch;
     pitch = kw_exp2(c_tune * (1.0f / 12.0f)) * dir;
     if (h < 0.0f) h = 0.0f;
     leash = kw_size_k((uint32_t)h);
-    once = (c_play == 0 || c_play == 3) ? 1 : 0;
+    once = ((pd >> 1) == 0u || (pd >> 1) == 3u) ? 1 : 0;
+}
+
+/* dt2.c kf_xf_start: the old note's play head kept, read on and crossed out (one under way: a new one from what
+   sounds now, the older tail's step under the declick) */
+static void xf_start(int32_t c, int32_t len)
+{
+    if (!playing || done[c]) return;
+    if (kv[c].n < 4) return;
+    if (xf_left[c] > 0) retrig[c] = 1;
+    xf_head[c] = kv[c].play;
+    xf_si[c] = kv[c].r_sig_i;
+    xf_sf[c] = kv[c].r_sig_f;
+    xf_gain[c] = kv[c].r_gain;
+    xf_left[c] = len;
+    xf_inv[c] = (len == KW_XF_PLAY) ? (1.0f / (float)KW_XF_PLAY) : (1.0f / (float)KW_XF);
+}
+
+/* dt2.c kf_slip (not WERP+): only PLAY's song switch slips; STR through zero is a scan */
+static void kw_slip(void)
+{
+    const int32_t back = (int32_t)(play_dec(c_play) & 1u);
+    if (slip_on) {
+        slip_pos = slip_pos + fwd_rate * (float)(int32_t)(kw_frames - slip_frm);
+        slip_frm = kw_frames;
+    }
+    if (!back) {
+        if (slip_on && playing) {
+            slip_go = (int32_t)slip_pos + 1;
+            since_wrap[0] = since_wrap[1] = 0;
+        }
+        slip_on = 0;
+        return;
+    }
+    if (!slip_on && playing) {
+        slip_on = 1;
+        slip_pos = (float)kv[0].ref.ip;
+        slip_frm = kw_frames;
+    }
+    fwd_rate = -stretch;
 }
 
 /* ---- the sample and its analysis ---------------------------------------- */
@@ -277,6 +343,20 @@ void kw_sample(int32_t n, int32_t stereo)
     derive();
 }
 
+/* RAND's seed: the unit's first TR.DET draw (dt2.c tk_rpc9's z->seed, 1, a step of its LCG); each channel's own
+   draw from it, avalanche-mixed (dt2.c tk_chan_seed: L and R matched 13.9% of picks with the old 1 ^ (c + 1)) */
+#define KW_GSEED (1u * 747796405u + 2891336453u)
+static uint32_t kw_chan_seed(uint32_t seed, uint32_t c)
+{
+    uint32_t x = seed + 0x9E3779B9u * (c + 1u);
+    x ^= x >> 16;
+    x *= 0x7feb352du;
+    x ^= x >> 15;
+    x *= 0x846ca68bu;
+    x ^= x >> 16;
+    return x;
+}
+
 /* the detector over the sample (both channels' sum, as the unit hears it; a mono sample's left twice): the
    peaks stored */
 int32_t kw_analyze(void)
@@ -288,7 +368,7 @@ int32_t kw_analyze(void)
         trace_to = chenv[c];
         while (!tk_run(&cst, 1 << 16)) {}
         trace_to = env;
-        tk_cache_fill(&chcache[c], &cst, chev, cst.count, n_frames, 1u ^ (uint32_t)(c + 1), scratch);
+        tk_cache_fill(&chcache[c], &cst, chev, cst.count, n_frames, kw_chan_seed(KW_GSEED, (uint32_t)c), scratch);
     }
     tk_init(&st, (uintptr_t)pcm[0], n_ch > 1 ? (uintptr_t)pcm[1] : 0, n_frames, ev);
     while (!tk_run(&st, 1 << 16)) {}
@@ -329,7 +409,7 @@ int32_t kw_ev_pos(int32_t k) { return (k >= 0 && k < st.count) ? ev[k].pos : -1;
    the analysis's seed, RAND's refilled at the grid's (kf/host/tkslice.c --region) */
 static void cache_for(int32_t mode)
 {
-    const uint32_t gseed = 1u * 747796405u + 2891336453u;
+    const uint32_t gseed = KW_GSEED;
     if (mode == cache_mode) return;
     tk_cache_fill(&cache, &st, ev, st.count, n_frames, 1u, scratch);
     if (mode == TK_RAND) tk_cache_fill(&cache, &st, ev, st.count, n_frames, gseed, scratch);
@@ -443,10 +523,25 @@ void kw_set(int32_t id, float x)
 {
     int32_t c;
     switch (id) {
-    case 0: c_str = x; break;
+    case 0: c_str = x; derive(); kw_slip(); return;
     case 1: c_tune = x; break;
     case 2: c_size = x; break;
-    case 3: c_play = (int32_t)x & 3; break;
+    case 3: {
+        const int32_t k = (int32_t)x & 7;
+        if (k != c_play) {
+            const uint32_t was = play_dec(c_play) >> 1;
+            for (c = 0; c < n_ch; c++) xf_start(c, KW_XF_PLAY);   /* (dt2.c: PLAY changed mid-note, crossed) */
+            c_play = k;
+            derive();
+            /* dt2.c kf_play_slip: reverse back to forward, the heads to where the song is */
+            if (was <= 1u && (play_dec(k) >> 1) > 1u && playing && stretch > 0.0f) {
+                slip_go = kv[0].ref.ip + 1;
+                since_wrap[0] = since_wrap[1] = 0;
+            }
+            kw_slip();
+        }
+        return;
+    }
     case 4: c_s = (int32_t)x; break;
     case 5: c_e = (int32_t)x; break;
     case 6:
@@ -489,6 +584,7 @@ void kw_trig(int32_t slice)
     if (start_at >= 0) at = start_at < s ? s : start_at > e - 1 ? e - 1 : start_at;
     for (c = 0; c < n_ch; c++) {
         retrig[c] = (playing && !done[c]) || carry;
+        xf_start(c, KW_XF);   /* (dt2.c kf_note_start: a note interrupted, crossed into this one) */
         kf_trig(&kv[c], (uintptr_t)pcm[c], n_frames, at);
         kv[c].tp = tplc[c];
         kv[c].tn = trans_on ? tnc[c] : 0;
@@ -505,6 +601,8 @@ void kw_trig(int32_t slice)
     playing = 1;
     start_at = -1;
     carry = 0;
+    slip_on = 0;
+    slip_go = 0;
 }
 
 /* a note from a given frame (clamped to the region): the page's sample switch keeps playing from the same share of
@@ -520,10 +618,38 @@ void kw_stop(void)
     int32_t c;
     playing = 0;
     carry = 0;
+    slip_on = 0;
+    slip_go = 0;
     for (c = 0; c < 2; c++) {
         done[c] = 1;
         last_out[c] = 0.0f;
+        xf_left[c] = 0;
     }
+}
+
+/* dt2.c kf_slip_jump: slip's place wrapped into a looping region, at most its end in a play-once one; declicked */
+static void kw_slip_jump(int32_t s, int32_t e)
+{
+    const int32_t len = e - s;
+    int32_t at = slip_go - 1;
+    int32_t c;
+    slip_go = 0;
+    if (len > 0) {
+        if (!once) {
+            if (at >= e) at -= (int32_t)((float)(at - s) * krecip(len)) * len;
+            while (at >= e) at -= len;
+        }
+        if (at > e - 1) at = e - 1;
+        if (at < s) at = s;
+        for (c = 0; c < n_ch; c++) {
+            if (done[c]) continue;
+            retrig[c] = 1;
+            kf_trig(&kv[c], (uintptr_t)pcm[c], n_frames, at);
+            kv[c].tp = tplc[c];
+            kv[c].tn = trans_on ? tnc[c] : 0;
+        }
+    }
+    for (c = 0; c < 2; c++) since_wrap[c] = slice_note ? 0 : 1 << 20;
 }
 
 /* a play-once note's or a slice's edges (dt2.c kf_edge): faded to silence as the reference meets its edge,
@@ -576,6 +702,7 @@ int32_t kw_render(int32_t frames)
             continue;
         }
         region(&s, &e);
+        if (slip_go > 0) kw_slip_jump(s, e);   /* (dt2.c: slip, at the block's start) */
         p.stretch = stretch;
         p.pitch = pitch;
         p.k = leash;
@@ -611,6 +738,18 @@ int32_t kw_render(int32_t frames)
                     }
                 }
                 if (fade[c] == 0) done[c] = 1;
+            }
+            if (xf_left[c] > 0) {   /* (dt2.c kf_xfade: out x (1 - w) + tail x w, w = left / KF_XF falling to 0) */
+                for (i = 0; i < KW_BLOCK; i++) {
+                    if (xf_left[c] > 0) {
+                        float y;
+                        const float w = (float)xf_left[c] * xf_inv[c];
+                        KREAD(xf_head[c], kv[c].pcm, kv[c].n, xf_gain[c], y);
+                        o[i] = o[i] + w * (y - o[i]);
+                        KSTEP(xf_head[c], xf_si[c], xf_sf[c], kv[c].n);
+                        xf_left[c]--;
+                    }
+                }
             }
             if (retrig[c]) {   /* (dt2.c kf_retrig_declick) */
                 const float dw = (last_out[c] - o[0]) * (1.0f / (float)(KW_DECLICK + 1));

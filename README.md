@@ -34,8 +34,10 @@ samples. Everything runs in the page; nothing is uploaded.
 - **The detector**: VOL (the loudest hits), GRID (even steps, each moved to the nearest transient) or RAND, THIN
   (how many transients the engine keeps as borders), LEN (how many slices a clicked slice or a pad plays, as the
   Digitakt's SLICE machine) and Smoothing (the TKEO follower's cutoff; 46 Hz to start, the unit's 25.6 Hz a snap point).
-- **PLAY**: forwards or backwards (the play head's direction: the grains), once or looped. The song's direction is
-  STR's sign, as on the unit.
+- **PLAY**: the unit's eight positions, left to right as its knob: the first arrow the grains' direction (the play
+  head), the second the song's (the reference), once or looped. The song switched back keeps time and jumps there when
+  switched forward again (slip); STR through zero turns the song too, as a continuous scan. A PLAY change mid-note
+  crosses over 40 ms, and a note restarted while one plays crosses from the old one's tail over 20 ms, as on the unit.
 - **Keyframes**: the analyzer keeps a peak or trough only when it differs from the last keyframe by more than 0.01
   of full scale (the unit's), so quiet passages and the noise floor get few keyframes and the grains adapt.
 - **The knobs**: STR (the reference's speed), TUNE (the play head's pitch, ±60 semitones), SIZE (K, the leash).
